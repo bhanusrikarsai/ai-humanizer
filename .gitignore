@@ -1,0 +1,36 @@
+# Secrets & Environment variables
+.env
+*.env
+*.env.local
+*.env.*.local
+
+# Node & Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+.npm/
+
+# Python & Virtual Environments
+__pycache__/
+*/__pycache__/
+backend/__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+*.egg-info/
+
+# Large Binaries & Deployment Bundles
+cloudflared.exe
+*.exe
+*.zip
+cloudflare-deployment.zip
+
+# System & Logs
+*.log
+.DS_Store
+Thumbs.db
+.system_generated/
+scratch/
