@@ -128,6 +128,22 @@ const STRATEGY_OPTIONS = [
   }
 ];
 
+const EXTENDED_CLICHES_LIST = [
+  'it is crucial to note that', 'it is crucial to note', 'delve into', 'delves into', 'delved into', 'delving into',
+  'serves as a testament to', 'a testament to', 'tapestry of', 'multifaceted',
+  'in conclusion', 'in summary', 'furthermore', 'moreover', 'pivotal role', 'plays a pivotal role',
+  'it is paramount to highlight that', 'it is paramount to', 'it is pivotal to', 'it is noteworthy that',
+  'unwavering commitment', 'meticulous', 'meticulously', 'elucidate', 'delineate',
+  'furnish empirical evidence', 'in today\'s fast-paced', 'comprehensive architectural mechanisms',
+  'keen eye', 'golden opportunity', 'bustling times', 'hope this email finds you well', 'spearheaded by',
+  'beacon of', 'seamlessly integrate', 'navigating the intricacies of', 'vital role',
+  'unlocking the potential', 'demystify', 'embark upon', 'embark on', 'holistic approach',
+  'rich tapestry', 'in the realm of', 'ever-evolving landscape', 'game-changer',
+  'paramount importance', 'plethora of', 'harnessing the power of', 'the implementation of',
+  'it is important to remember that', 'it should be noted that', 'demonstrated exceptional aptitude',
+  'without delay', 'underscores the importance', 'fostering collaboration', 'foster synergy'
+];
+
 export default function App() {
   // Navigation Tabs: 'home' | 'humanize' | 'detector' | 'templates' | 'history' | 'settings'
   const [activeTab, setActiveTab] = useState('home');
@@ -330,6 +346,133 @@ export default function App() {
       .replace(/\btapestry of\b/gi, 'landscape of');
     setInputText(purged);
     showToast('Purged known AI clichés from draft');
+  };
+
+  // Interactive X-Ray Inspector Renderer
+  const renderXRayDiff = () => {
+    if (!outputText) return null;
+
+    const lowerInput = inputText.toLowerCase();
+    const lowerOutput = outputText.toLowerCase();
+
+    // 1. Detect purged clichés from input
+    const purged = EXTENDED_CLICHES_LIST.filter(c => lowerInput.includes(c) && !lowerOutput.includes(c));
+
+    // 2. Regex for factual entities, metrics, dates, and technical names
+    const entityRegex = /(\$?\d+[\d,]*(?:\.\d+)?%?|\d+\s+out\s+of\s+\d+|\d+\s+(?:minutes|hours|days|years|ms|CVE|engineers)|(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:,\s+\d{4})?|Q[1-4]\s+\d{4}|Alice\s+Chen|David\s+Kumar|Sarah\s+Lin|Marcus|Acme\s+Corp|Stripe|CloudScale|Python|Kubernetes|Go|PostgreSQL|Redis|Kafka|Docker|LeetCode|"Medium"|"No"|Naive\s+Bayes|zero-frequency\s+problem)/gi;
+
+    // 3. Regex for injected human transitions, active phrasing & contractions
+    const transitionRegex = /\b(Plus|Also|On top of that|Bottom line|Overall|In short|Looking at|Walk us through|really stood out|knocked out|fixed|protected|maintained|super clear|without hesitation|we've|it's|don't|can't|aren't|I've|they're|there's|who's)\b/gi;
+
+    const paragraphs = outputText.split(/\r?\n/);
+
+    return (
+      <div className="space-y-3.5 ai-fade-in">
+        {/* Status Alert Banner */}
+        <div className="bg-[#e6f4ea] text-[#137333] border border-[#ceead6] text-xs font-medium px-4 py-2.5 rounded-xl flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <strong>X-Ray Active:</strong> tightened to {activeStrategy.title} rhythm; facts locked ({keepFacts ? '100% NER' : 'Standard'}).
+          </span>
+          <span className="text-[10px] font-bold bg-[#137333] text-white px-2 py-0.5 rounded-full">
+            Inspection Mode
+          </span>
+        </div>
+
+        {/* Legend bar */}
+        <div className="flex flex-wrap items-center gap-3 p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs">
+          <span className="flex items-center gap-1.5 font-semibold text-emerald-800">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+            Injected Human Flow
+          </span>
+          <span className="flex items-center gap-1.5 font-semibold text-blue-800">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0"></span>
+            Locked Facts &amp; Metrics
+          </span>
+          <span className="flex items-center gap-1.5 font-semibold text-rose-700">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
+            Purged AI Markers ({purged.length})
+          </span>
+        </div>
+
+        {/* Purged Clichés Pills */}
+        {purged.length > 0 && (
+          <div className="p-3 bg-rose-50/70 border border-rose-200/80 rounded-xl space-y-1.5 text-xs">
+            <div className="text-[10px] uppercase font-bold text-rose-800 tracking-wider">
+              Purged Robotic Markers from Input ({purged.length}):
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {purged.map((c, i) => (
+                <span 
+                  key={i} 
+                  className="line-through bg-white text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full text-[11px] font-mono shadow-2xs"
+                  title="Purged during humanization"
+                >
+                  {c}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Token-by-Token Highlighted Text Output */}
+        <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-200/80 text-slate-800 text-sm leading-relaxed space-y-2">
+          {paragraphs.map((para, pIdx) => {
+            if (!para.trim()) return <div key={pIdx} className="h-2" />;
+
+            const parts = [];
+            let lastIndex = 0;
+            const combinedRegex = new RegExp(
+              `(${entityRegex.source})|(${transitionRegex.source})`,
+              'gi'
+            );
+
+            let match;
+            while ((match = combinedRegex.exec(para)) !== null) {
+              if (match.index > lastIndex) {
+                parts.push(para.slice(lastIndex, match.index));
+              }
+
+              const matchedText = match[0];
+              if (match[1]) {
+                // Locked fact / number / entity
+                parts.push(
+                  <span
+                    key={`ent-${match.index}`}
+                    className="bg-blue-100 text-blue-900 border border-blue-300 font-semibold px-1 py-0.5 rounded text-[13px] mx-0.5 shadow-2xs inline-block"
+                    title="100% Locked Fact & Entity (Preserved)"
+                  >
+                    {matchedText}
+                  </span>
+                );
+              } else {
+                // Injected human transition / contraction
+                parts.push(
+                  <span
+                    key={`tr-${match.index}`}
+                    className="bg-emerald-100 text-emerald-900 border border-emerald-300 font-semibold px-1 py-0.5 rounded text-[13px] mx-0.5 shadow-2xs inline-block"
+                    title="Injected Human Rhythm & Flow"
+                  >
+                    {matchedText}
+                  </span>
+                );
+              }
+              lastIndex = match.index + matchedText.length;
+            }
+
+            if (lastIndex < para.length) {
+              parts.push(para.slice(lastIndex));
+            }
+
+            return (
+              <p key={pIdx} className="whitespace-pre-wrap leading-relaxed">
+                {parts}
+              </p>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -717,21 +860,27 @@ export default function App() {
 
                     <div className="flex items-center gap-1.5">
                       <button
-                        onClick={() => setViewMode('clean')}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition cursor-pointer border ${
+                        onClick={() => {
+                          setViewMode('clean');
+                          showToast('Switched to Clean View');
+                        }}
+                        className={`px-3.5 py-1 rounded-full text-xs font-semibold transition cursor-pointer border ${
                           viewMode === 'clean'
-                            ? 'bg-slate-100 text-slate-900 border-slate-200'
-                            : 'bg-white text-slate-500 border-slate-200/60 hover:text-slate-800'
+                            ? 'bg-[#0f4c5c] text-white border-[#0f4c5c] shadow-2xs'
+                            : 'bg-white text-slate-600 border-slate-200 hover:text-slate-900'
                         }`}
                       >
                         Clean
                       </button>
                       <button
-                        onClick={() => setViewMode('xray')}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition cursor-pointer border ${
+                        onClick={() => {
+                          setViewMode('xray');
+                          showToast('🔬 X-Ray Diff Inspector Active');
+                        }}
+                        className={`px-3.5 py-1 rounded-full text-xs font-semibold transition cursor-pointer border ${
                           viewMode === 'xray'
-                            ? 'bg-slate-100 text-slate-900 border-slate-200'
-                            : 'bg-white text-slate-500 border-slate-200/60 hover:text-slate-800'
+                            ? 'bg-[#0f4c5c] text-white border-[#0f4c5c] shadow-2xs'
+                            : 'bg-white text-slate-600 border-slate-200 hover:text-slate-900'
                         }`}
                       >
                         X-Ray
@@ -750,17 +899,21 @@ export default function App() {
                   {/* Body Text */}
                   <div className="p-6 flex-1 flex flex-col overflow-y-auto bg-white">
                     {outputText ? (
-                      <>
-                        {/* Status Alert Banner */}
-                        <div className="bg-[#e6f4ea] text-[#137333] border border-[#ceead6] text-xs font-medium px-4 py-2.5 rounded-xl mb-4 leading-relaxed">
-                          X-Ray: tightened to {activeStrategy.title} rhythm; facts and terms kept.
-                        </div>
+                      viewMode === 'xray' ? (
+                        renderXRayDiff()
+                      ) : (
+                        <>
+                          {/* Status Alert Banner */}
+                          <div className="bg-[#e6f4ea] text-[#137333] border border-[#ceead6] text-xs font-medium px-4 py-2.5 rounded-xl mb-4 leading-relaxed">
+                            X-Ray: tightened to {activeStrategy.title} rhythm; facts and terms kept.
+                          </div>
 
-                        {/* Text Render with bullet point preservation */}
-                        <div className="text-slate-800 text-sm leading-relaxed whitespace-pre-wrap font-sans">
-                          {outputText}
-                        </div>
-                      </>
+                          {/* Text Render with bullet point preservation */}
+                          <div className="text-slate-800 text-sm leading-relaxed whitespace-pre-wrap font-sans">
+                            {outputText}
+                          </div>
+                        </>
+                      )
                     ) : (
                       <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs py-20 text-center">
                         <Sparkles className="w-8 h-8 mb-2 text-teal-400" />
