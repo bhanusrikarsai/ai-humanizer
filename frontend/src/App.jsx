@@ -7,6 +7,7 @@ import {
   ShieldAlert, Zap, Plus, Leaf, Check, RefreshCw, X, Download
 } from 'lucide-react';
 import AbsoluteDetectorView from './components/AbsoluteDetectorView';
+import brainLogo from './assets/logo.png';
 
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const DEFAULT_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
@@ -340,17 +341,22 @@ export default function App() {
       <aside className="w-60 bg-[#0b1727] text-white flex flex-col justify-between shrink-0 border-r border-[#152438] select-none z-20">
         <div className="p-4 space-y-6">
           
-          {/* Logo brand badge */}
+          {/* Logo brand badge with human brain logo */}
           <div 
             onClick={() => setActiveTab('home')}
             className="flex items-center gap-3 px-2 pt-2 cursor-pointer group"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0d9488] to-[#14b8a6] text-white flex items-center justify-center shadow-lg shadow-teal-500/20 shrink-0 group-hover:scale-105 transition">
-              <Plus className="w-5 h-5 text-white stroke-[2.5]" />
+            <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center p-1 shadow-md shadow-teal-500/20 shrink-0 group-hover:scale-105 transition border border-teal-500/20 overflow-hidden">
+              <img src={brainLogo} alt="AI Humanizer Brain Logo" className="w-full h-full object-contain" />
             </div>
-            <span className="font-extrabold text-base tracking-tight text-white">
-              ai-humanizer
-            </span>
+            <div className="flex flex-col">
+              <span className="font-extrabold text-base tracking-tight text-white leading-tight">
+                ai-humanizer
+              </span>
+              <span className="text-[9px] font-semibold text-teal-400 tracking-wider uppercase">
+                Brain Engine
+              </span>
+            </div>
           </div>
 
           {/* Navigation Items */}
@@ -462,10 +468,10 @@ export default function App() {
           <div className="flex items-center gap-3 shrink-0">
             <div 
               onClick={() => setActiveTab('settings')}
-              className="w-8 h-8 rounded-full bg-[#0f5c56] text-white font-bold text-xs flex items-center justify-center cursor-pointer shadow-xs hover:brightness-110 transition"
+              className="w-8 h-8 rounded-full bg-white border border-teal-600/30 overflow-hidden p-0.5 flex items-center justify-center cursor-pointer shadow-xs hover:scale-105 transition"
               title="Current Account & API Settings"
             >
-              AI
+              <img src={brainLogo} alt="AI" className="w-full h-full object-contain" />
             </div>
           </div>
         </header>
