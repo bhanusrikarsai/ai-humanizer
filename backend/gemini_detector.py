@@ -17,9 +17,9 @@ DEFAULT_GEMINI_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_
 
 # Cascade of models: fastest with high quota first
 GEMINI_MODELS = [
-    "gemini-3.5-flash-lite",
+    "gemini-3.8-flash",
     "gemini-flash-lite-latest",
-    "gemini-3.8-flash"
+    "gemini-3.5-flash-lite"
 ]
 
 

@@ -629,9 +629,9 @@ Return ONLY the raw humanized text without any intro, markdown headings, or quot
         client = genai.Client(api_key=key)
 
         system_instruction = self.build_system_prompt(context, tone, locked_entities)
-        user_prompt = f"Rewrite this text into 100% natural, human-authored writing with high sentence burstiness and zero AI patterns. Keep all facts, numbers, dates, and names:\n\n{text}"
+        user_prompt = f"Rewrite this text into 100% natural, human-authored writing with high sentence burstiness, zero AI patterns, and preserved bullet points or list formatting if provided. Keep all facts, numbers, dates, and names:\n\n{text}"
 
-        models_to_try = ["gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-3.8-flash"]
+        models_to_try = ["gemini-3.8-flash", "gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
         last_err = None
         for model_name in models_to_try:
             try:
