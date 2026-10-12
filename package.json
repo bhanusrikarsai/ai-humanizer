@@ -1,0 +1,9 @@
+{
+  "name": "ai-humanizer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build"
+  }
+}

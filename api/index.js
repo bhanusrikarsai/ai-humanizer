@@ -362,7 +362,7 @@ export default async function handler(req, res) {
   }
 
   // 2. GET /api/health
-  if (path.endsWith('/health') || path === '/api') {
+  if (path.endsWith('/health') || path === '/api' || path === '' || path === '/') {
     return res.status(200).json({
       status: 'healthy',
       service: 'AI Humanization & Factuality Layer (Vercel Serverless)',
