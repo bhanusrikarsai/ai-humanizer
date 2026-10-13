@@ -405,4 +405,106 @@ textarea::-webkit-scrollbar-thumb {
   pointer-events: none;
 }
 
+/* ============================================================
+   GLASSMORPHIC 3D GLOSSY ICON SUITE
+   ============================================================ */
+
+.glass-icon-base {
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-icon-base::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 52%;
+  background: radial-gradient(ellipse 120% 85% at 50% 0%, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0.2) 65%, rgba(255, 255, 255, 0) 100%);
+  border-radius: inherit;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.glass-icon-base::after {
+  content: '';
+  position: absolute;
+  inset: 0.5px;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+}
+
+/* 1. Stealth Ultra: Emerald Glass */
+.glass-icon-emerald {
+  background: linear-gradient(145deg, #10b981 0%, #059669 55%, #047857 100%);
+  box-shadow: 
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.75),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.2),
+    0 6px 14px -2px rgba(16, 185, 129, 0.45),
+    0 2px 4px rgba(16, 185, 129, 0.25);
+  color: #ffffff;
+}
+
+/* 2. Academic Rigor: Sapphire Glass */
+.glass-icon-blue {
+  background: linear-gradient(145deg, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%);
+  box-shadow: 
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.75),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.2),
+    0 6px 14px -2px rgba(37, 99, 235, 0.45),
+    0 2px 4px rgba(37, 99, 235, 0.25);
+  color: #ffffff;
+}
+
+/* 3. Executive Polish: Obsidian/Slate Glass */
+.glass-icon-slate {
+  background: linear-gradient(145deg, #475569 0%, #334155 55%, #1e293b 100%);
+  box-shadow: 
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.65),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.3),
+    0 6px 14px -2px rgba(30, 41, 59, 0.4),
+    0 2px 4px rgba(30, 41, 59, 0.2);
+  color: #ffffff;
+}
+
+/* 4. Organic Casual: Amber/Honey Glass */
+.glass-icon-amber {
+  background: linear-gradient(145deg, #f59e0b 0%, #d97706 55%, #b45309 100%);
+  box-shadow: 
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.8),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.2),
+    0 6px 14px -2px rgba(217, 119, 6, 0.45),
+    0 2px 4px rgba(217, 119, 6, 0.25);
+  color: #ffffff;
+}
+
+/* 5. Polished: Amethyst/Purple Glass */
+.glass-icon-purple {
+  background: linear-gradient(145deg, #a855f7 0%, #9333ea 55%, #7e22ce 100%);
+  box-shadow: 
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.75),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.2),
+    0 6px 14px -2px rgba(147, 51, 234, 0.45),
+    0 2px 4px rgba(147, 51, 234, 0.25);
+  color: #ffffff;
+}
+
+/* Glassy Brain Badge in Sidebar */
+.glass-badge-brain {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.45),
+    0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
 

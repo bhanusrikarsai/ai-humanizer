@@ -374,8 +374,8 @@ export default function AbsoluteDetectorView({
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/25">
-                <ShieldAlert className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 rounded-2xl glass-icon-base glass-icon-blue text-white flex items-center justify-center shadow-md">
+                <ShieldAlert className="w-5 h-5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)] relative z-10" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -528,8 +528,8 @@ export default function AbsoluteDetectorView({
           
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm">
-                ✓
+              <span className="w-8 h-8 rounded-xl glass-icon-base glass-icon-emerald text-white flex items-center justify-center font-bold text-sm shadow-md">
+                <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">✓</span>
               </span>
               <div>
                 <h2 className="text-xl font-black text-slate-900 tracking-tight">

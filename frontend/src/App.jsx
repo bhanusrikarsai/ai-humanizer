@@ -83,8 +83,7 @@ const STRATEGY_OPTIONS = [
     title: 'Stealth Ultra',
     subtitle: 'Varied rhythm, natural phrasing',
     IconComponent: Leaf,
-    iconBg: 'bg-[#e6f4ea]',
-    iconColor: 'text-[#0f5c56]'
+    glassClass: 'glass-icon-emerald'
   },
   { 
     id: 'academic', 
@@ -93,8 +92,7 @@ const STRATEGY_OPTIONS = [
     title: 'Academic Rigor',
     subtitle: 'Analytical precision, citation flow',
     IconComponent: GraduationCap,
-    iconBg: 'bg-[#e8f0fe]',
-    iconColor: 'text-[#1a73e8]'
+    glassClass: 'glass-icon-blue'
   },
   { 
     id: 'professional', 
@@ -103,8 +101,7 @@ const STRATEGY_OPTIONS = [
     title: 'Executive Polish',
     subtitle: 'Crisp, active voice, no fluff',
     IconComponent: Briefcase,
-    iconBg: 'bg-[#f1f3f4]',
-    iconColor: 'text-[#3c4043]'
+    glassClass: 'glass-icon-slate'
   },
   { 
     id: 'conversational', 
@@ -113,8 +110,7 @@ const STRATEGY_OPTIONS = [
     title: 'Organic Casual',
     subtitle: 'Contractions, conversational flow',
     IconComponent: MessageSquare,
-    iconBg: 'bg-[#fef7e0]',
-    iconColor: 'text-[#e37400]'
+    glassClass: 'glass-icon-amber'
   },
   { 
     id: 'polished', 
@@ -123,8 +119,7 @@ const STRATEGY_OPTIONS = [
     title: 'Polished',
     subtitle: 'Harmonious, articulate rhythm',
     IconComponent: Star,
-    iconBg: 'bg-[#f3e8fd]',
-    iconColor: 'text-[#9334e6]'
+    glassClass: 'glass-icon-purple'
   }
 ];
 
@@ -484,13 +479,13 @@ export default function App() {
       <aside className="w-60 bg-[#0b1727] text-white flex flex-col justify-between shrink-0 border-r border-[#152438] select-none z-20">
         <div className="p-4 space-y-6">
           
-          {/* Logo brand badge with human brain logo */}
+          {/* Logo brand badge with glassy human brain logo */}
           <div 
             onClick={() => setActiveTab('home')}
             className="flex items-center gap-3 px-2 pt-2 cursor-pointer group"
           >
-            <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center p-1 shadow-md shadow-teal-500/20 shrink-0 group-hover:scale-105 transition border border-teal-500/20 overflow-hidden">
-              <img src={brainLogo} alt="AI Humanizer Brain Logo" className="w-full h-full object-contain" />
+            <div className="w-9 h-9 rounded-xl glass-badge-brain flex items-center justify-center p-1.5 shrink-0 group-hover:scale-105 transition overflow-hidden">
+              <img src={brainLogo} alt="AI Humanizer Brain Logo" className="w-full h-full object-contain drop-shadow-sm filter brightness-105" />
             </div>
             <div className="flex flex-col">
               <span className="font-extrabold text-base tracking-tight text-white leading-tight">
@@ -611,10 +606,10 @@ export default function App() {
           <div className="flex items-center gap-3 shrink-0">
             <div 
               onClick={() => setActiveTab('settings')}
-              className="w-8 h-8 rounded-full bg-white border border-teal-600/30 overflow-hidden p-0.5 flex items-center justify-center cursor-pointer shadow-xs hover:scale-105 transition"
+              className="w-8 h-8 rounded-full glass-icon-base glass-icon-emerald p-1 flex items-center justify-center cursor-pointer shadow-sm hover:scale-105 transition overflow-hidden"
               title="Current Account & API Settings"
             >
-              <img src={brainLogo} alt="AI" className="w-full h-full object-contain" />
+              <img src={brainLogo} alt="AI" className="w-full h-full object-contain filter brightness-110 drop-shadow-xs" />
             </div>
           </div>
         </header>
@@ -653,16 +648,16 @@ export default function App() {
                         setTone(opt.id);
                         showToast(`Strategy: ${opt.title}`);
                       }}
-                      className={`p-4 rounded-2xl transition-all duration-200 cursor-pointer text-left flex flex-col justify-between min-h-[135px] relative ${
+                      className={`group p-4 rounded-2xl transition-all duration-300 cursor-pointer text-left flex flex-col justify-between min-h-[135px] relative hover:-translate-y-0.5 ${
                         isSelected
                           ? 'bg-white border-2 border-[#0d9488] shadow-sm ring-2 ring-[#0d9488]/15'
-                          : 'bg-white border border-slate-200/90 hover:border-slate-300 hover:shadow-xs'
+                          : 'bg-white border border-slate-200/90 hover:border-slate-300 hover:shadow-md'
                       }`}
                     >
                       <div>
-                        {/* Icon squircle container */}
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${opt.iconBg} ${opt.iconColor}`}>
-                          <IconComp className="w-4 h-4" />
+                        {/* 3D Glassmorphic Icon Container */}
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3.5 glass-icon-base ${opt.glassClass} shadow-md transition-all duration-300 group-hover:scale-110`}>
+                          <IconComp className="w-5 h-5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)] relative z-10" />
                         </div>
                         <h3 className="text-sm font-bold text-slate-900 leading-snug">
                           {opt.title}
