@@ -41,6 +41,8 @@ export default function AuthModal({
   const [customGoogleEmail, setCustomGoogleEmail] = useState('');
   const [customGoogleName, setCustomGoogleName] = useState('');
   const [isCustomGoogleMode, setIsCustomGoogleMode] = useState(false);
+  const [showClientIdInput, setShowClientIdInput] = useState(false);
+  const [rawClientIdInput, setRawClientIdInput] = useState('');
   const otpInputRefs = useRef([]);
 
   // Resend timer countdown
@@ -52,11 +54,58 @@ export default function AuthModal({
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
+  const getGoogleClientId = () => {
+    return localStorage.getItem('ai_humanizer_google_client_id') || import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+  };
+
   // Main Google Sign-In Trigger
   const handleGoogleClick = async () => {
     setErrorMsg(null);
 
-    // If Firebase is configured with active keys, attempt Firebase popup first
+    const clientId = getGoogleClientId();
+
+    // 1. If Google Cloud Client ID is available, open the official accounts.google.com popup window!
+    if (clientId && window.google?.accounts?.oauth2) {
+      try {
+        setGoogleLoading(true);
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: 'https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile openid',
+          callback: async (tokenResponse) => {
+            if (tokenResponse.error) {
+              setErrorMsg(tokenResponse.error_description || tokenResponse.error || 'Google sign-in cancelled');
+              setGoogleLoading(false);
+              return;
+            }
+            try {
+              const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+              });
+              const profile = await res.json();
+              if (!profile.email) {
+                throw new Error('Google did not return an email address.');
+              }
+              await authenticateGoogleAccount(
+                profile.email,
+                profile.name || profile.given_name,
+                profile.picture,
+                tokenResponse.access_token
+              );
+            } catch (err) {
+              setErrorMsg(err.message || 'Failed to retrieve Google profile');
+              setGoogleLoading(false);
+            }
+          }
+        });
+        tokenClient.requestAccessToken({ prompt: 'select_account' });
+        return;
+      } catch (err) {
+        console.warn('GIS Token client error:', err);
+        setGoogleLoading(false);
+      }
+    }
+
+    // 2. If Firebase is configured with active keys, attempt Firebase popup
     if (hasFirebaseConfig()) {
       try {
         setGoogleLoading(true);
@@ -77,7 +126,7 @@ export default function AuthModal({
       }
     }
 
-    // Direct authentic Google Account Chooser (Zero friction, 100% works everywhere)
+    // 3. Direct Google Account Chooser (Zero friction, 100% works everywhere)
     setShowGoogleChooser(true);
   };
 
@@ -485,6 +534,57 @@ export default function AuthModal({
             <p className="text-[10px] text-slate-400 leading-relaxed text-center px-2">
               To continue, Google will share your name, email address, and profile picture with <strong>AI Humanizer</strong>. Before using this app, you can review its terms of service.
             </p>
+
+            {/* Direct Google Cloud Client ID Connector */}
+            <div className="pt-1 border-t border-slate-100 dark:border-slate-800/80">
+              {!showClientIdInput ? (
+                <button
+                  type="button"
+                  onClick={() => setShowClientIdInput(true)}
+                  className="w-full text-center text-[10px] text-teal-600 dark:text-teal-400 hover:underline flex items-center justify-center gap-1 cursor-pointer font-medium"
+                >
+                  <Settings className="w-2.5 h-2.5" />
+                  Connect Google Cloud Client ID (for official accounts.google.com popup)
+                </button>
+              ) : (
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl space-y-2 border border-slate-200 dark:border-slate-700">
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                    Paste OAuth Client ID from{' '}
+                    <a
+                      href="https://console.cloud.google.com/apis/credentials"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-teal-600 dark:text-teal-400 underline font-semibold"
+                    >
+                      Google Cloud Console
+                    </a>:
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={rawClientIdInput}
+                      onChange={(e) => setRawClientIdInput(e.target.value)}
+                      placeholder="12345-xxx.apps.googleusercontent.com"
+                      className="flex-1 text-[11px] p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (rawClientIdInput.trim()) {
+                          localStorage.setItem('ai_humanizer_google_client_id', rawClientIdInput.trim());
+                          setShowClientIdInput(false);
+                          setShowGoogleChooser(false);
+                          setTimeout(() => handleGoogleClick(), 200);
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg cursor-pointer"
+                    >
+                      Save & Launch
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Return link */}
             <div className="text-center pt-1">
