@@ -11,11 +11,19 @@ import base64
 import json
 import secrets
 import smtplib
+import hmac
+import hashlib
 import urllib.request
 import urllib.error
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional, Dict, Any, List
+
+OTP_SECRET = os.environ.get("OTP_SECRET", "ai-humanizer-stateless-otp-secret-2026").encode()
+
+def sign_otp(email: str, otp: str, expires_at: int) -> str:
+    data = f"{email.strip().lower()}:{otp.strip()}:{expires_at}".encode()
+    return hmac.new(OTP_SECRET, data, hashlib.sha256).hexdigest()
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -95,6 +103,7 @@ class SendOtpRequest(BaseModel):
 class VerifyOtpRequest(BaseModel):
     email: str = Field(..., description="User email")
     otp: str = Field(..., min_length=4, max_length=8, description="Verification OTP")
+    otp_token: Optional[str] = Field(None, description="Stateless HMAC verification token")
     name: Optional[str] = Field(None, description="User full name")
     stay_signed_in: Optional[bool] = Field(True, description="Remember device")
 
@@ -291,6 +300,11 @@ def auth_send_otp(req: SendOtpRequest):
     
     otp = f"{random.randint(100000, 999999)}"
     now = time.time()
+    expires_at = int((now + 600) * 1000)
+    sig = sign_otp(email, otp, expires_at)
+    token_payload = json.dumps({"email": email, "expiresAt": expires_at, "sig": sig})
+    otp_token = base64.b64encode(token_payload.encode()).decode()
+
     OTP_CACHE[email] = {
         "otp": otp,
         "expires_at": now + 600,
@@ -307,6 +321,7 @@ def auth_send_otp(req: SendOtpRequest):
         "success": True,
         "message": f"Verification code sent to {email}",
         "email": email,
+        "otp_token": otp_token,
         "email_sent": send_res["email_sent"],
         "smtp_configured": send_res["smtp_configured"],
         "expires_in_seconds": 600
@@ -316,19 +331,44 @@ def auth_send_otp(req: SendOtpRequest):
 @app.post("/api/auth/verify-otp")
 def auth_verify_otp(req: VerifyOtpRequest):
     email = req.email.strip().lower()
-    stored = OTP_CACHE.get(email)
-    
-    if not stored:
-        raise HTTPException(status_code=400, detail="No active verification code found for this email. Please request a new one.")
-    
-    if time.time() > stored["expires_at"]:
-        del OTP_CACHE[email]
-        raise HTTPException(status_code=400, detail="Verification code has expired. Please request a new code.")
-    
-    if req.otp.strip() != stored["otp"]:
-        raise HTTPException(status_code=400, detail="Incorrect verification code. Please check your email and try again.")
-    
-    name = req.name or stored.get("name") or email.split("@")[0].title()
+    otp_code = req.otp.strip()
+    is_valid = False
+
+    # 1. Stateless Cryptographic HMAC Token Verification (100% reliable across serverless/containers/restarts)
+    if req.otp_token:
+        try:
+            decoded = json.loads(base64.b64decode(req.otp_token).decode("utf-8"))
+            if decoded.get("email") == email:
+                expires_at = decoded.get("expiresAt", 0)
+                if time.time() * 1000 > expires_at:
+                    raise HTTPException(status_code=400, detail="Verification code has expired. Please request a new code.")
+                expected_sig = sign_otp(email, otp_code, expires_at)
+                if hmac.compare_digest(expected_sig, decoded.get("sig", "")):
+                    is_valid = True
+                else:
+                    raise HTTPException(status_code=400, detail="Incorrect verification code. Please check your email and try again.")
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"[OTP TOKEN ERROR] {e}")
+
+    # 2. Secondary fallback to in-memory OTP cache
+    if not is_valid:
+        stored = OTP_CACHE.get(email)
+        if stored:
+            if time.time() > stored["expires_at"]:
+                del OTP_CACHE[email]
+                raise HTTPException(status_code=400, detail="Verification code has expired. Please request a new code.")
+            if otp_code == stored["otp"]:
+                is_valid = True
+                del OTP_CACHE[email]
+            else:
+                raise HTTPException(status_code=400, detail="Incorrect verification code. Please check your email and try again.")
+
+    if not is_valid:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification code. Please request a new code.")
+
+    name = req.name or email.split("@")[0].title()
     token = f"auth_token_{secrets.token_hex(16)}"
     user_data = {
         "id": f"usr_{secrets.token_hex(6)}",
@@ -343,7 +383,8 @@ def auth_verify_otp(req: VerifyOtpRequest):
     }
     USERS_DB[email] = user_data
     save_users(USERS_DB)
-    del OTP_CACHE[email]
+    if email in OTP_CACHE:
+        del OTP_CACHE[email]
     
     return {
         "success": True,

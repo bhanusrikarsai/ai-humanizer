@@ -29,6 +29,7 @@ export default function AuthModal({
 
   // OTP State
   const [otpSent, setOtpSent] = useState(false);
+  const [otpToken, setOtpToken] = useState(null);
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [otpLoading, setOtpLoading] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
@@ -266,6 +267,9 @@ export default function AuthModal({
       }
 
       const data = await res.json();
+      if (data.otp_token) {
+        setOtpToken(data.otp_token);
+      }
       setOtpSent(true);
       setResendCooldown(60);
 
@@ -357,7 +361,8 @@ export default function AuthModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: cleanEmail,
-          otp: fullCode,
+          otp: fullCode.trim(),
+          otp_token: otpToken,
           name: name.trim() || cleanEmail.split('@')[0],
           stay_signed_in: rememberMe
         })

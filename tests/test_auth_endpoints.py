@@ -92,6 +92,27 @@ class TestAuthEndpoints(unittest.TestCase):
         data = login_res.json()
         self.assertIn("Account not found", data.get("detail", ""))
 
+    def test_verify_with_stateless_otp_token_after_cache_cleared(self):
+        # 1. Send OTP
+        res = client.post("/api/auth/send-otp", json={"email": "vu.241fa04267@gmail.com"})
+        data = res.json()
+        otp_token = data.get("otp_token")
+        self.assertIsNotNone(otp_token)
+        otp = OTP_CACHE["vu.241fa04267@gmail.com"]["otp"]
+
+        # 2. Simulate serverless container restart: CLEAR in-memory cache completely!
+        OTP_CACHE.clear()
+
+        # 3. Verify OTP using the cryptographic otp_token -> MUST SUCCEED 100%!
+        verify_res = client.post("/api/auth/verify-otp", json={
+            "email": "vu.241fa04267@gmail.com",
+            "otp": otp,
+            "otp_token": otp_token,
+            "name": "Bhanu Srikar"
+        })
+        self.assertEqual(verify_res.status_code, 200)
+        self.assertTrue(verify_res.json().get("success"))
+
 if __name__ == "__main__":
     unittest.main()
 

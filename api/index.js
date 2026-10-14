@@ -12,8 +12,17 @@
  * - Transparent proxying to BACKEND_URL (if configured)
  */
 
+import crypto from 'crypto';
+
 const DEFAULT_GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
 const GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-lite-latest'];
+const OTP_SECRET = process.env.OTP_SECRET || 'ai-humanizer-stateless-otp-secret-2026';
+
+function signOtp(email, otp, expiresAt) {
+  const hmac = crypto.createHmac('sha256', OTP_SECRET);
+  hmac.update(`${email.trim().toLowerCase()}:${otp.trim()}:${expiresAt}`);
+  return hmac.digest('hex');
+}
 
 const PRESETS = {
   zero_frequency: {
@@ -550,9 +559,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Valid email address required' });
     }
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 600000;
+    const sig = signOtp(email, otp, expiresAt);
+    const otp_token = Buffer.from(JSON.stringify({ email, expiresAt, sig })).toString('base64');
+
     global.OTP_CACHE.set(email, {
       otp,
-      expiresAt: Date.now() + 600000,
+      expiresAt,
       name: body.name || email.split('@')[0]
     });
 
@@ -631,6 +644,7 @@ export default async function handler(req, res) {
       success: true,
       message: `Verification code sent to ${email}`,
       email,
+      otp_token,
       email_sent: emailSent,
       expires_in_seconds: 600
     });
@@ -640,18 +654,52 @@ export default async function handler(req, res) {
   if (path.endsWith('/auth/verify-otp')) {
     const email = (body.email || '').trim().toLowerCase();
     const otp = (body.otp || '').trim();
-    const stored = global.OTP_CACHE.get(email);
-    if (!stored) {
-      return res.status(400).json({ error: 'No active verification code found. Please request a new code.' });
+    const otpToken = body.otp_token;
+
+    let isValid = false;
+
+    // 1. Primary: Cryptographic HMAC Token Verification (Works across all Vercel serverless containers!)
+    if (otpToken) {
+      try {
+        const decoded = JSON.parse(Buffer.from(otpToken, 'base64').toString('utf-8'));
+        if (decoded.email === email) {
+          if (Date.now() > decoded.expiresAt) {
+            return res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
+          }
+          const expectedSig = signOtp(email, otp, decoded.expiresAt);
+          if (expectedSig === decoded.sig) {
+            isValid = true;
+          } else {
+            return res.status(400).json({ error: 'Incorrect verification code. Please check your email and try again.' });
+          }
+        }
+      } catch (e) {
+        console.error('Error decoding otp_token:', e);
+      }
     }
-    if (Date.now() > stored.expiresAt) {
-      global.OTP_CACHE.delete(email);
-      return res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
+
+    // 2. Secondary fallback: in-memory cache
+    if (!isValid) {
+      const stored = global.OTP_CACHE?.get(email);
+      if (stored) {
+        if (Date.now() > stored.expiresAt) {
+          global.OTP_CACHE.delete(email);
+          return res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
+        }
+        if (stored.otp === otp) {
+          isValid = true;
+          global.OTP_CACHE.delete(email);
+        } else {
+          return res.status(400).json({ error: 'Incorrect verification code. Please check your email and try again.' });
+        }
+      }
     }
-    if (stored.otp !== otp) {
-      return res.status(400).json({ error: 'Incorrect verification code. Please check your email and try again.' });
+
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid or expired verification code. Please request a new code.' });
     }
-    const name = body.name || stored.name || email.split('@')[0];
+
+    const name = body.name || email.split('@')[0];
     const user = {
       id: 'usr_' + Math.random().toString(36).substring(2, 9),
       email,
@@ -663,7 +711,6 @@ export default async function handler(req, res) {
       token: 'auth_' + Math.random().toString(36).substring(2, 15)
     };
     global.USERS_DB.set(email, user);
-    global.OTP_CACHE.delete(email);
     return res.status(200).json({ success: true, message: 'Account verified successfully', user });
   }
 
