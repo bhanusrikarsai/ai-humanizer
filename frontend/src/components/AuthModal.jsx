@@ -2,8 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import {
   ShieldCheck, Mail, ArrowRight, CheckCircle2, Lock, Sparkles,
-  RefreshCw, Check, X, KeyRound, AlertCircle, User
+  RefreshCw, Check, X, KeyRound, AlertCircle, User, Settings, ExternalLink
 } from 'lucide-react';
+import {
+  loginWithGooglePopup,
+  hasFirebaseConfig,
+  saveFirebaseConfig,
+  getFirebaseConfig,
+  clearFirebaseConfig
+} from '../firebase';
 
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
@@ -28,10 +35,20 @@ export default function AuthModal({
   const [resendCooldown, setResendCooldown] = useState(0);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  // Google GIS State
+  // Google / Firebase State
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [showFirebaseConfig, setShowFirebaseConfig] = useState(false);
+  const [rawFirebaseConfigInput, setRawFirebaseConfigInput] = useState('');
+  const [firebaseConfigured, setFirebaseConfigured] = useState(hasFirebaseConfig());
   const googleBtnRef = useRef(null);
   const otpInputRefs = useRef([]);
+
+  // Check config on modal open
+  useEffect(() => {
+    if (isOpen) {
+      setFirebaseConfigured(hasFirebaseConfig());
+    }
+  }, [isOpen]);
 
   // Resend timer countdown
   useEffect(() => {
@@ -42,110 +59,111 @@ export default function AuthModal({
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
-  // Initialize Google Identity Services (GIS) if available
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const initGoogleGis = () => {
-      if (window.google?.accounts?.id && googleBtnRef.current) {
-        try {
-          const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '108422778939-aihumanizerapp.apps.googleusercontent.com';
-          window.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: handleGoogleCredentialResponse,
-            auto_select: false,
-            cancel_on_tap_outside: true,
-          });
-
-          // Render official Google button inside the container
-          window.google.accounts.id.renderButton(googleBtnRef.current, {
-            theme: document.documentElement.classList.contains('dark') ? 'filled_black' : 'outline',
-            size: 'large',
-            width: '100%',
-            shape: 'pill',
-            text: mode === 'signup' ? 'signup_with' : 'signin_with',
-            logo_alignment: 'left',
-          });
-        } catch (e) {
-          console.warn('Google GIS button render notice:', e);
-        }
-      }
-    };
-
-    const timeout = setTimeout(initGoogleGis, 300);
-    return () => clearTimeout(timeout);
-  }, [isOpen, mode]);
-
-  // Handle Google GIS Credential callback
-  const handleGoogleCredentialResponse = async (response) => {
-    if (!response || !response.credential) return;
+  // Real Google Account Sign-In via Firebase Popup (accounts.google.com)
+  const handleFirebaseGoogleLogin = async () => {
     setGoogleLoading(true);
     setErrorMsg(null);
 
+    // If Firebase configuration is not present, open the fast configuration helper
+    if (!hasFirebaseConfig()) {
+      setShowFirebaseConfig(true);
+      setGoogleLoading(false);
+      return;
+    }
+
     try {
+      const googleUser = await loginWithGooglePopup();
+      if (!googleUser || !googleUser.email) {
+        throw new Error('Google sign-in was cancelled or failed to retrieve email.');
+      }
+
+      // Sync verified Google user with backend/serverless database
       const res = await fetch(`${API_BASE}/api/auth/google-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          credential: response.credential,
-          stay_signed_in: rememberMe
+          email: googleUser.email,
+          name: googleUser.displayName,
+          picture: googleUser.photoURL,
+          token: googleUser.idToken,
+          stay_signed_in: rememberMe,
+          provider: 'google'
         })
       });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || err.detail || 'Google sign-in failed');
+        throw new Error(err.error || err.detail || 'Failed to authenticate Google user');
       }
 
       const data = await res.json();
       finishLogin(data.user);
     } catch (e) {
-      setErrorMsg(e.message || 'Failed to authenticate with Google');
+      console.error('Firebase Google Auth error:', e);
+      if (e.code === 'auth/popup-closed-by-user') {
+        setErrorMsg('Sign-in popup was closed before completing. Please try again.');
+      } else if (e.code === 'auth/configuration-not-found' || e.code === 'auth/invalid-api-key') {
+        setErrorMsg('Invalid Firebase configuration. Please update your Firebase API keys.');
+        setShowFirebaseConfig(true);
+      } else if (e.code === 'auth/unauthorized-domain') {
+        setErrorMsg(`Domain not authorized. Please add "${window.location.hostname}" to Authorized Domains in Firebase Console > Authentication > Settings.`);
+      } else {
+        setErrorMsg(e.message || 'Google account sign-in error');
+      }
     } finally {
       setGoogleLoading(false);
     }
   };
 
-  // Direct Real Google Account Sign-In (Interactive instant Google Auth)
-  const handleDirectGoogleLogin = async (customEmail = null) => {
-    setGoogleLoading(true);
+  // Helper to parse and save user's Firebase config
+  const handleSaveFirebaseConfig = (e) => {
+    if (e) e.preventDefault();
     setErrorMsg(null);
 
     try {
-      let targetEmail = customEmail || email.trim();
-      if (!targetEmail) {
-        targetEmail = window.prompt("Enter your Google / Gmail account email to sign in directly:", "user@gmail.com");
+      let configObj = null;
+      const text = rawFirebaseConfigInput.trim();
+
+      if (text.startsWith('{') && text.endsWith('}')) {
+        configObj = JSON.parse(text);
+      } else {
+        // Parse JS snippet format: const firebaseConfig = { apiKey: "...", ... }
+        const extractField = (fieldName) => {
+          const match = text.match(new RegExp(`${fieldName}:\\s*["']([^"']+)["']`));
+          return match ? match[1] : null;
+        };
+
+        const apiKey = extractField('apiKey');
+        const authDomain = extractField('authDomain');
+        const projectId = extractField('projectId');
+        const storageBucket = extractField('storageBucket');
+        const messagingSenderId = extractField('messagingSenderId');
+        const appId = extractField('appId');
+
+        if (apiKey && authDomain) {
+          configObj = { apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId };
+        }
       }
 
-      if (!targetEmail || !targetEmail.includes('@')) {
-        setGoogleLoading(false);
-        return;
+      if (!configObj || !configObj.apiKey || !configObj.authDomain) {
+        throw new Error('Please paste valid Firebase configuration containing at least apiKey and authDomain.');
       }
 
-      const targetName = targetEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      saveFirebaseConfig(configObj);
+      setFirebaseConfigured(true);
+      setShowFirebaseConfig(false);
+      setRawFirebaseConfigInput('');
 
-      const res = await fetch(`${API_BASE}/api/auth/google-login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: targetEmail,
-          name: targetName,
-          picture: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(targetName)}`,
-          stay_signed_in: rememberMe
-        })
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || err.detail || 'Google login failed');
+      if (onToast) {
+        onToast('Firebase configured! Opening real Google popup...');
       }
 
-      const data = await res.json();
-      finishLogin(data.user);
-    } catch (e) {
-      setErrorMsg(e.message || 'Google account sign-in error');
-    } finally {
-      setGoogleLoading(false);
+      // Immediately launch the real Google popup window
+      setTimeout(() => {
+        handleFirebaseGoogleLogin();
+      }, 200);
+    } catch (err) {
+      setErrorMsg(err.message || 'Could not parse Firebase configuration format.');
     }
   };
 
@@ -394,30 +412,101 @@ export default function AuthModal({
             </div>
           )}
 
-          {/* 1. REAL GOOGLE ACCOUNT AUTHENTICATION */}
-          <div className="space-y-2.5">
-            {/* Google GIS rendered button container */}
-            <div ref={googleBtnRef} className="w-full flex justify-center min-h-[44px]" />
+          {/* 1. REAL GOOGLE ACCOUNT AUTHENTICATION (FIREBASE POPUP) */}
+          {showFirebaseConfig ? (
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border border-teal-500/30 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold text-xs">
+                    G
+                  </div>
+                  <h3 className="text-xs font-bold text-slate-800 dark:text-white">
+                    Connect Real Google Sign-In
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowFirebaseConfig(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
-            {/* Custom Styled Real Google One-Click Button */}
-            <button
-              onClick={() => handleDirectGoogleLogin()}
-              disabled={googleLoading}
-              className="w-full py-2.5 px-4 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/70 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center justify-center gap-3 transition shadow-2xs hover:shadow-xs active:scale-[0.99] cursor-pointer disabled:opacity-50"
-            >
-              {googleLoading ? (
-                <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                </svg>
-              )}
-              <span>{mode === 'signup' ? 'Sign up with Google Account' : 'Continue with Google Account'}</span>
-            </button>
-          </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Paste your Firebase configuration snippet from{' '}
+                <a
+                  href="https://console.firebase.google.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-teal-600 dark:text-teal-400 underline font-semibold inline-flex items-center gap-0.5"
+                >
+                  Firebase Console <ExternalLink className="w-2.5 h-2.5" />
+                </a>{' '}
+                (Project Settings ➔ General ➔ Your apps):
+              </p>
+
+              <textarea
+                value={rawFirebaseConfigInput}
+                onChange={(e) => setRawFirebaseConfigInput(e.target.value)}
+                placeholder='const firebaseConfig = { apiKey: "AIzaSy...", authDomain: "your-app.firebaseapp.com", projectId: "your-app" };'
+                rows={4}
+                className="w-full text-[11px] font-mono p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:border-teal-500 transition resize-none"
+              />
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveFirebaseConfig}
+                  className="flex-1 py-2 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer"
+                >
+                  Save & Open Real Google Popup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFirebaseConfig(false)}
+                  className="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleFirebaseGoogleLogin}
+                disabled={googleLoading}
+                className="w-full py-2.5 px-4 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/70 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center justify-center gap-3 transition shadow-2xs hover:shadow-xs active:scale-[0.99] cursor-pointer disabled:opacity-50"
+              >
+                {googleLoading ? (
+                  <div className="w-4 h-4 border-2 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                )}
+                <span>{mode === 'signup' ? 'Sign up with Google (Real Account)' : 'Continue with Google Account'}</span>
+              </button>
+
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[10px] text-slate-400">
+                  {firebaseConfigured ? '✓ Firebase Google Auth active' : 'Real Google accounts.google.com popup'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowFirebaseConfig(true)}
+                  className="text-[10px] text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1 cursor-pointer font-medium"
+                >
+                  <Settings className="w-2.5 h-2.5" />
+                  {firebaseConfigured ? 'Change Firebase Config' : 'Setup Firebase'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Divider */}
           <div className="relative flex items-center justify-center my-3">
