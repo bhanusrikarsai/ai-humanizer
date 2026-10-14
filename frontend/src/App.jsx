@@ -561,38 +561,38 @@ export default function App() {
           <nav className="space-y-1">
             <button
               onClick={() => setActiveTab('home')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer relative ${
                 activeTab === 'home'
-                  ? 'bg-[#16263d] text-white font-bold shadow-xs'
+                  ? 'bg-gradient-to-r from-teal-500/25 via-emerald-500/15 to-transparent text-white font-bold shadow-xs border-l-2 border-teal-400 pl-3'
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
             >
-              <Home className="w-4 h-4 text-slate-400" />
+              <Home className={`w-4 h-4 ${activeTab === 'home' ? 'text-teal-400' : 'text-slate-400'}`} />
               <span>Home</span>
             </button>
 
             <button
               onClick={() => setActiveTab('humanize')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer relative ${
                 activeTab === 'humanize'
-                  ? 'bg-[#16263d] text-white font-bold shadow-xs'
+                  ? 'bg-gradient-to-r from-teal-500/25 via-emerald-500/15 to-transparent text-white font-bold shadow-xs border-l-2 border-teal-400 pl-3'
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
             >
-              <FileText className="w-4 h-4 text-slate-400" />
+              <FileText className={`w-4 h-4 ${activeTab === 'humanize' ? 'text-teal-400' : 'text-slate-400'}`} />
               <span>Humanize Text</span>
             </button>
 
             <button
               onClick={() => setActiveTab('detector')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer relative ${
                 activeTab === 'detector'
-                  ? 'bg-[#16263d] text-white font-bold shadow-xs'
+                  ? 'bg-gradient-to-r from-teal-500/25 via-emerald-500/15 to-transparent text-white font-bold shadow-xs border-l-2 border-teal-400 pl-3'
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
             >
               <div className="flex items-center gap-3">
-                <Shield className="w-4 h-4 text-slate-400" />
+                <Shield className={`w-4 h-4 ${activeTab === 'detector' ? 'text-teal-400' : 'text-slate-400'}`} />
                 <span>AI Detector</span>
               </div>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/20 text-[#2dd4bf] border border-teal-500/30">
@@ -602,37 +602,37 @@ export default function App() {
 
             <button
               onClick={() => setActiveTab('templates')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer relative ${
                 activeTab === 'templates'
-                  ? 'bg-[#16263d] text-white font-bold shadow-xs'
+                  ? 'bg-gradient-to-r from-teal-500/25 via-emerald-500/15 to-transparent text-white font-bold shadow-xs border-l-2 border-teal-400 pl-3'
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
             >
-              <LayoutGrid className="w-4 h-4 text-slate-400" />
+              <LayoutGrid className={`w-4 h-4 ${activeTab === 'templates' ? 'text-teal-400' : 'text-slate-400'}`} />
               <span>Templates</span>
             </button>
 
             <button
               onClick={() => setActiveTab('history')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer relative ${
                 activeTab === 'history'
-                  ? 'bg-[#16263d] text-white font-bold shadow-xs'
+                  ? 'bg-gradient-to-r from-teal-500/25 via-emerald-500/15 to-transparent text-white font-bold shadow-xs border-l-2 border-teal-400 pl-3'
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
             >
-              <Clock className="w-4 h-4 text-slate-400" />
+              <Clock className={`w-4 h-4 ${activeTab === 'history' ? 'text-teal-400' : 'text-slate-400'}`} />
               <span>History</span>
             </button>
 
             <button
               onClick={() => setActiveTab('settings')}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer relative ${
                 activeTab === 'settings'
-                  ? 'bg-[#16263d] text-white font-bold shadow-xs'
+                  ? 'bg-gradient-to-r from-teal-500/25 via-emerald-500/15 to-transparent text-white font-bold shadow-xs border-l-2 border-teal-400 pl-3'
                   : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
             >
-              <Settings className="w-4 h-4 text-slate-400" />
+              <Settings className={`w-4 h-4 ${activeTab === 'settings' ? 'text-teal-400' : 'text-slate-400'}`} />
               <span>Settings</span>
             </button>
           </nav>
@@ -804,30 +804,35 @@ export default function App() {
           </div>
         </header>
 
-        {/* Dynamic View Router */}
-        <div className="p-8 space-y-6 max-w-7xl mx-auto w-full">
+        {/* Dynamic View Router with Silky Section Switch Animations */}
+        <div className="p-8 space-y-6 max-w-7xl mx-auto w-full relative">
           
+          {/* Top Edge Neon Energy Sweep on Section Switch */}
+          <div key={`beam-${activeTab}`} className="h-0.5 w-full bg-gradient-to-r from-teal-400 via-emerald-400 to-cyan-400 animate-glow-sweep absolute top-0 left-0 opacity-80 pointer-events-none rounded-full" />
+
           {/* ================================================== */}
           {/* TAB: HOME SHOWCASE (WHAT OUR TOOL DOES)           */}
           {/* ================================================== */}
           {activeTab === 'home' && (
-            <HomeShowcase
-              onNavigateToHumanize={(opts) => {
-                if (opts?.context) setContext(opts.context);
-                if (opts?.tone) setTone(opts.tone);
-                if (opts?.text) setInputText(opts.text);
-                setActiveTab('humanize');
-              }}
-              onNavigateToDetector={() => setActiveTab('detector')}
-              onToast={showToast}
-            />
+            <div key="tab-home" className="animate-section-enter">
+              <HomeShowcase
+                onNavigateToHumanize={(opts) => {
+                  if (opts?.context) setContext(opts.context);
+                  if (opts?.tone) setTone(opts.tone);
+                  if (opts?.text) setInputText(opts.text);
+                  setActiveTab('humanize');
+                }}
+                onNavigateToDetector={() => setActiveTab('detector')}
+                onToast={showToast}
+              />
+            </div>
           )}
 
           {/* ================================================== */}
           {/* TAB: HUMANIZE TEXT STUDIO (DEDICATED EDITOR)       */}
           {/* ================================================== */}
           {activeTab === 'humanize' && (
-            <div className="space-y-6">
+            <div key="tab-humanize" className="animate-section-enter space-y-6">
               
               {/* Hero Title Section */}
               <div className="space-y-1">
@@ -1210,7 +1215,7 @@ export default function App() {
           {/* TAB: UNIVERSAL AI DETECTOR (ABSOLUTE 7 SUITE)      */}
           {/* ================================================== */}
           {activeTab === 'detector' && (
-            <div className="space-y-6">
+            <div key="tab-detector" className="animate-section-enter space-y-6">
               <AbsoluteDetectorView
                 initialText={inputText}
                 onTransferToHumanizer={(text) => {
@@ -1227,7 +1232,7 @@ export default function App() {
           {/* TAB: TEMPLATES LIBRARY                             */}
           {/* ================================================== */}
           {activeTab === 'templates' && (
-            <div className="space-y-6">
+            <div key="tab-templates" className="animate-section-enter space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-slate-900">Templates &amp; Presets</h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Pre-tested prompts, bullet points, emails, and technical documentation.</p>
@@ -1272,7 +1277,7 @@ export default function App() {
           {/* TAB: HISTORY                                       */}
           {/* ================================================== */}
           {activeTab === 'history' && (
-            <div className="space-y-6">
+            <div key="tab-history" className="animate-section-enter space-y-6">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Humanization History</h2>
@@ -1347,7 +1352,7 @@ export default function App() {
           {/* TAB: SETTINGS                                      */}
           {/* ================================================== */}
           {activeTab === 'settings' && (
-            <div className="max-w-2xl space-y-6">
+            <div key="tab-settings" className="animate-section-enter max-w-2xl space-y-6">
               
               {/* Account Card */}
               <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-4 transition-colors">

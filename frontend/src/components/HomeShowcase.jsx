@@ -4,6 +4,7 @@ import {
   FileText, Check, ListChecks, Terminal, Briefcase, Mail,
   HelpCircle, BarChart3, GraduationCap, Flame, Eye, Lock
 } from 'lucide-react';
+import brainLogo from '../assets/logo.png';
 
 const INTERACTIVE_SAMPLES = [
   {
@@ -152,10 +153,15 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
       {/* ======================================================== */}
       <section className="text-center max-w-4xl mx-auto space-y-6 pt-4">
         
-        {/* Verification Pill */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-500/10 dark:bg-teal-400/10 border border-teal-500/30 text-teal-700 dark:text-teal-300 text-xs font-bold shadow-xs">
-          <Shield className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-          <span>7-Detector Forensic Matrix • 100% Turnitin &amp; GPTZero Bypass</span>
+        {/* Branded Logo & Verification Pill */}
+        <div className="flex flex-col items-center justify-center gap-3">
+          <div className="w-16 h-16 rounded-3xl glass-badge-brain flex items-center justify-center p-2.5 shadow-xl shadow-teal-500/20 bg-slate-900 border border-teal-500/40 hover:scale-105 transition-transform duration-300">
+            <img src={brainLogo} alt="AI Humanizer Logo" className="w-full h-full object-contain filter brightness-110 drop-shadow-md" />
+          </div>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-500/10 dark:bg-teal-400/10 border border-teal-500/30 text-teal-700 dark:text-teal-300 text-xs font-bold shadow-xs">
+            <Shield className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+            <span>7-Detector Forensic Matrix • 100% Turnitin &amp; GPTZero Bypass</span>
+          </div>
         </div>
 
         {/* Hero Title */}
@@ -246,8 +252,8 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
           </div>
         </div>
 
-        {/* Side-by-Side Comparison Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+        {/* Side-by-Side Comparison Grid with Dynamic Switch Animation */}
+        <div key={selectedSample.id} className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch animate-sample-fade">
           
           {/* LEFT: Before / Robotic AI */}
           <div className="p-6 rounded-2xl bg-red-500/5 border border-red-500/20 dark:border-red-500/30 flex flex-col justify-between space-y-4 relative">

@@ -4,6 +4,7 @@ import {
   ShieldCheck, Mail, ArrowRight, CheckCircle2, Lock, Sparkles,
   RefreshCw, Check, X, KeyRound, AlertCircle, User, Settings, ExternalLink
 } from 'lucide-react';
+import brainLogo from '../assets/logo.png';
 import {
   loginWithGooglePopup,
   hasFirebaseConfig,
@@ -491,8 +492,8 @@ export default function AuthModal({
             {/* Top Header Banner */}
             <div className="p-6 pb-4 border-b border-slate-100 dark:border-slate-800/80 bg-gradient-to-r from-teal-500/10 via-emerald-500/5 to-cyan-500/10">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#0f4c5c] to-emerald-500 flex items-center justify-center text-white shadow-md shadow-teal-500/20">
-                  <Sparkles className="w-5 h-5 text-white" />
+                <div className="w-11 h-11 rounded-2xl glass-badge-brain flex items-center justify-center p-1.5 shrink-0 shadow-lg shadow-teal-500/20 bg-slate-900 border border-teal-500/30 overflow-hidden group">
+                  <img src={brainLogo} alt="AI Humanizer Logo" className="w-full h-full object-contain filter brightness-110 drop-shadow-sm group-hover:scale-105 transition-transform duration-300" />
                 </div>
                 <div>
                   <h2 className="text-lg font-extrabold text-slate-900 dark:text-white leading-tight">
