@@ -314,8 +314,9 @@ def auth_send_otp(req: SendOtpRequest):
     
     send_res = send_real_email_otp(email, otp, req.name or email.split("@")[0])
 
-    if not send_res["email_sent"] and send_res.get("err_message"):
-        raise HTTPException(status_code=400, detail=f"Email delivery error: {send_res['err_message']}")
+    if not send_res["email_sent"]:
+        err = send_res.get("err_message") or "Email delivery failed. Please verify recipient and SMTP credentials."
+        raise HTTPException(status_code=500, detail=f"Email delivery error: {err}")
     
     return {
         "success": True,

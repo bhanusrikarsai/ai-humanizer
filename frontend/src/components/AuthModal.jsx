@@ -267,6 +267,9 @@ export default function AuthModal({
       }
 
       const data = await res.json();
+      if (data.email_sent === false) {
+        throw new Error(data.error || data.detail || 'Email delivery failed. Please check your email address.');
+      }
       if (data.otp_token) {
         setOtpToken(data.otp_token);
       }
