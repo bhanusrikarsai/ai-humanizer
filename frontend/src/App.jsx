@@ -168,6 +168,13 @@ export default function App() {
     }
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState(() => {
+    try {
+      const stored = localStorage.getItem('ai_humanizer_remembered_accounts');
+      if (stored && JSON.parse(stored)?.length > 0) return 'login';
+    } catch (e) {}
+    return 'signup';
+  });
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   // Apply Theme class to documentElement
@@ -184,6 +191,12 @@ export default function App() {
   // Prompt sign in on initial visit if NOT logged in; if already logged in, NEVER ask again!
   useEffect(() => {
     if (!currentUser) {
+      try {
+        const stored = localStorage.getItem('ai_humanizer_remembered_accounts');
+        if (stored && JSON.parse(stored)?.length > 0) {
+          setAuthModalMode('login');
+        }
+      } catch (e) {}
       setIsAuthModalOpen(true);
     }
   }, []);
@@ -200,6 +213,7 @@ export default function App() {
     setCurrentUser(null);
     setUserMenuOpen(false);
     showToast('Logged out of AI Humanizer');
+    setAuthModalMode('login');
     setIsAuthModalOpen(true);
   };
 
@@ -667,7 +681,10 @@ export default function App() {
             </div>
           ) : (
             <button
-              onClick={() => setIsAuthModalOpen(true)}
+              onClick={() => {
+                setAuthModalMode('login');
+                setIsAuthModalOpen(true);
+              }}
               className="w-full py-2 px-3 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 border border-teal-500/40 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
             >
               <LogIn className="w-3.5 h-3.5" />
@@ -786,7 +803,10 @@ export default function App() {
               </div>
             ) : (
               <button
-                onClick={() => setIsAuthModalOpen(true)}
+                onClick={() => {
+                  setAuthModalMode('login');
+                  setIsAuthModalOpen(true);
+                }}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0f4c5c] hover:bg-[#0c3e4b] dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
               >
                 <LogIn className="w-3.5 h-3.5" />
@@ -1414,7 +1434,10 @@ export default function App() {
                       <p className="text-[11px] text-slate-400 mt-0.5">Sign in with your email to unlock unlimited bypass.</p>
                     </div>
                     <button
-                      onClick={() => setIsAuthModalOpen(true)}
+                      onClick={() => {
+                        setAuthModalMode('login');
+                        setIsAuthModalOpen(true);
+                      }}
                       className="px-5 py-2 bg-[#0f4c5c] hover:bg-[#0c3e4b] dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-xs"
                     >
                       Sign In / Sign Up
@@ -1535,6 +1558,7 @@ export default function App() {
       {/* Authentication Modal (Google Identity + Real Email OTP + Device Persistence) */}
       <AuthModal
         isOpen={isAuthModalOpen}
+        initialMode={authModalMode}
         canClose={!!currentUser}
         onClose={() => setIsAuthModalOpen(false)}
         onLoginSuccess={(user) => {

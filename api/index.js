@@ -917,6 +917,31 @@ export default async function handler(req, res) {
     });
   }
 
+  // 9b. GET /api/auth/saved-accounts (List of saved accounts for 1-click login)
+  if (path.endsWith('/auth/saved-accounts')) {
+    const serverlessUsers = readServerlessUsers();
+    const map = new Map();
+    if (global.USERS_DB) {
+      for (const [em, u] of global.USERS_DB.entries()) {
+        map.set(em, u);
+      }
+    }
+    for (const [em, u] of Object.entries(serverlessUsers)) {
+      if (!map.has(em)) map.set(em, u);
+    }
+    const accounts = Array.from(map.values()).map(u => ({
+      id: u.id || 'usr_' + Math.random().toString(36).substring(2, 8),
+      email: u.email,
+      name: u.name || u.email.split('@')[0],
+      avatar: u.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(u.name || u.email)}`,
+      provider: u.provider || 'email_otp',
+      verified: true,
+      plan: u.plan || 'Pro Unlimited',
+      created_at: u.created_at || Date.now()
+    }));
+    return res.status(200).json({ success: true, accounts });
+  }
+
   // 10. POST /api/auth/clear-data (Clear all stored users & OTPs)
   if (path.endsWith('/auth/clear-data')) {
     if (global.USERS_DB) global.USERS_DB.clear();

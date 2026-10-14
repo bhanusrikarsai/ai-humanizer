@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import {
   ShieldCheck, Mail, ArrowRight, CheckCircle2, Lock, Sparkles,
-  RefreshCw, Check, X, KeyRound, AlertCircle, User, Settings, ExternalLink
+  RefreshCw, Check, X, KeyRound, AlertCircle, User, Settings, ExternalLink, Trash2
 } from 'lucide-react';
 import brainLogo from '../assets/logo.png';
 import {
@@ -42,21 +42,57 @@ export default function AuthModal({
   const [rememberedAccounts, setRememberedAccounts] = useState([]);
   const otpInputRefs = useRef([]);
 
-  // Load remembered accounts from device localStorage
+  // Load remembered accounts from device localStorage and server
   useEffect(() => {
+    if (!isOpen) return;
+
+    let localAccs = [];
     try {
       const stored = localStorage.getItem('ai_humanizer_remembered_accounts');
       if (stored) {
-        setRememberedAccounts(JSON.parse(stored));
+        localAccs = JSON.parse(stored) || [];
       } else {
         const single = localStorage.getItem('ai_humanizer_user');
         if (single) {
           const u = JSON.parse(single);
-          if (u && u.email) setRememberedAccounts([u]);
+          if (u && u.email) localAccs = [u];
         }
       }
     } catch (e) {}
-  }, [isOpen]);
+
+    if (localAccs.length > 0) {
+      setRememberedAccounts(localAccs);
+      if (initialMode === 'login' || (!initialMode && localAccs.length > 0)) {
+        setMode('login');
+      }
+    } else {
+      setMode(initialMode || 'signup');
+    }
+
+    // Also fetch registered accounts from server to ensure complete sync
+    fetch(`${API_BASE}/api/auth/saved-accounts`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success && Array.isArray(data.accounts) && data.accounts.length > 0) {
+          setRememberedAccounts(prev => {
+            const combined = [...prev];
+            for (const acc of data.accounts) {
+              if (!combined.some(c => (c.email || '').toLowerCase() === (acc.email || '').toLowerCase())) {
+                combined.push(acc);
+              }
+            }
+            try {
+              localStorage.setItem('ai_humanizer_remembered_accounts', JSON.stringify(combined));
+            } catch (e) {}
+            return combined;
+          });
+          if (initialMode === 'login') {
+            setMode('login');
+          }
+        }
+      })
+      .catch(() => {});
+  }, [isOpen, initialMode]);
 
   // Resend timer countdown
   useEffect(() => {
@@ -507,6 +543,24 @@ export default function AuthModal({
     } catch (e) {}
   };
 
+  // Remove a single saved account from device
+  const handleRemoveSingleAccount = (emailToRemove, e) => {
+    if (e) e.stopPropagation();
+    const updated = rememberedAccounts.filter(a => (a.email || '').toLowerCase() !== (emailToRemove || '').toLowerCase());
+    setRememberedAccounts(updated);
+    try {
+      localStorage.setItem('ai_humanizer_remembered_accounts', JSON.stringify(updated));
+      const single = localStorage.getItem('ai_humanizer_user');
+      if (single) {
+        const u = JSON.parse(single);
+        if (u && (u.email || '').toLowerCase() === (emailToRemove || '').toLowerCase()) {
+          localStorage.removeItem('ai_humanizer_user');
+        }
+      }
+    } catch (e) {}
+    if (onToast) onToast('Removed account from this device');
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -565,13 +619,18 @@ export default function AuthModal({
                     setErrorMsg(null);
                     setOtpSent(false);
                   }}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     mode === 'login'
                       ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
                   }`}
                 >
-                  Log In
+                  <span>Log In</span>
+                  {rememberedAccounts.length > 0 && (
+                    <span className="px-1.5 py-0.2 text-[10px] bg-emerald-500 text-white rounded-full font-bold">
+                      {rememberedAccounts.length}
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
@@ -591,6 +650,28 @@ export default function AuthModal({
               {mode === 'signup' ? (
                 !otpSent ? (
                   <form onSubmit={handleSendOtp} className="space-y-3">
+                    {/* Quick switch banner if accounts are already saved on this device */}
+                    {rememberedAccounts.length > 0 && (
+                      <div className="p-2.5 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-900/60 rounded-xl flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <div className="text-[11px] text-teal-900 dark:text-teal-200 truncate">
+                            Saved account: <span className="font-bold">{rememberedAccounts[0].name || rememberedAccounts[0].email}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMode('login');
+                            setErrorMsg(null);
+                          }}
+                          className="px-2 py-0.5 text-[10px] font-bold bg-[#0f4c5c] hover:bg-[#0c3e4b] dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-lg shrink-0 cursor-pointer"
+                        >
+                          Log In →
+                        </button>
+                      </div>
+                    )}
+
                     <div>
                       <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
                         Your Full Name
@@ -753,8 +834,99 @@ export default function AuthModal({
                   </div>
                 )
               ) : (
-                /* 3. MODE === 'LOGIN': DIRECT EMAIL SIGN IN */
-                <div className="space-y-3">
+                /* 3. MODE === 'LOGIN': SAVED ACCOUNTS + DIRECT EMAIL SIGN IN */
+                <div className="space-y-4">
+                  {/* Saved Accounts on this Device */}
+                  {rememberedAccounts.length > 0 ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                          <span className="uppercase tracking-wider">Saved Accounts ({rememberedAccounts.length})</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleClearSavedData}
+                          className="text-[11px] text-red-500 hover:text-red-600 dark:text-red-400 font-semibold hover:underline cursor-pointer"
+                        >
+                          Clear all
+                        </button>
+                      </div>
+
+                      <div className="space-y-2">
+                        {rememberedAccounts.map((acc, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => handleRememberedLogin(acc.email, acc.name)}
+                            className="w-full p-3 bg-gradient-to-r from-teal-50/90 via-slate-50 to-emerald-50/70 dark:from-slate-800 dark:via-slate-800/90 dark:to-teal-950/40 hover:from-teal-100 hover:to-emerald-100 dark:hover:from-slate-750 dark:hover:to-teal-900/50 border border-teal-200/90 dark:border-teal-800/70 hover:border-teal-400 dark:hover:border-teal-500 rounded-2xl flex items-center gap-3 transition-all cursor-pointer group shadow-2xs text-left"
+                          >
+                            <div className="relative shrink-0">
+                              <img
+                                src={acc.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(acc.name || acc.email)}`}
+                                alt={acc.name}
+                                className="w-10 h-10 rounded-full border-2 border-teal-500 bg-white dark:bg-slate-900 object-cover shadow-xs"
+                              />
+                              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition truncate flex items-center gap-1.5">
+                                <span>{acc.name || acc.email.split('@')[0]}</span>
+                                <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 px-1.5 py-0.2 rounded-full border border-emerald-300 dark:border-emerald-800">
+                                  Saved
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                                {acc.email}
+                              </div>
+                              <div className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">
+                                {acc.plan || 'Pro Unlimited'}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                disabled={verifyLoading}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRememberedLogin(acc.email, acc.name);
+                                }}
+                                className="px-3 py-1.5 bg-[#0f4c5c] hover:bg-[#0c3e4b] dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-xl text-[11px] font-bold shadow-2xs group-hover:scale-105 transition-transform flex items-center gap-1 cursor-pointer"
+                              >
+                                <span>Log In</span>
+                                <ArrowRight className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                title="Remove account from device"
+                                onClick={(e) => handleRemoveSingleAccount(acc.email, e)}
+                                className="p-1.5 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg transition hover:bg-slate-100 dark:hover:bg-slate-700/60 cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="relative flex py-1 items-center">
+                        <div className="flex-grow border-t border-slate-200 dark:border-slate-800" />
+                        <span className="flex-shrink mx-3 text-[10px] uppercase font-bold text-slate-400 tracking-wider">or log in with another email</span>
+                        <div className="flex-grow border-t border-slate-200 dark:border-slate-800" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/70 rounded-xl text-center space-y-1">
+                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        No saved accounts on this device yet
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        If you have already signed up, enter your registered email below to log in directly.
+                      </p>
+                    </div>
+                  )}
+
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
@@ -765,7 +937,7 @@ export default function AuthModal({
                   >
                     <div>
                       <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                        Email Address
+                        {rememberedAccounts.length > 0 ? 'Email Address' : 'Registered Email Address'}
                       </label>
                       <div className="relative">
                         <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />

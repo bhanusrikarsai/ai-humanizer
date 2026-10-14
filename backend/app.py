@@ -502,6 +502,30 @@ def auth_login_remembered(req: RememberedLoginRequest):
     }
 
 
+@app.get("/api/auth/saved-accounts")
+def auth_saved_accounts():
+    """Return list of saved accounts from the server for 1-click login."""
+    users = load_users()
+    accounts = []
+    for email, u in users.items():
+        accounts.append({
+            "id": u.get("id", f"usr_{hash(email)}"),
+            "email": u.get("email", email),
+            "name": u.get("name", email.split("@")[0].title()),
+            "avatar": u.get("avatar") or f"https://api.dicebear.com/7.x/initials/svg?seed={u.get('name', email)}",
+            "provider": u.get("provider", "email_otp"),
+            "verified": u.get("verified", True),
+            "plan": u.get("plan", "Pro Unlimited"),
+            "created_at": u.get("created_at", time.time())
+        })
+    # Sort with newest first
+    accounts.sort(key=lambda x: x.get("created_at", 0), reverse=True)
+    return {
+        "success": True,
+        "accounts": accounts
+    }
+
+
 @app.post("/api/auth/clear-data")
 def auth_clear_data():
     """Clear all stored accounts and OTP sessions to start completely fresh."""
