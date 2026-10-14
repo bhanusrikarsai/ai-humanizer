@@ -80,19 +80,14 @@ python -m uvicorn backend.app:app --host 127.0.0.1 --port 8000
 ```
 Then open your browser to **[http://127.0.0.1:8000](http://127.0.0.1:8000)**.
 
-### 3. Deploy to Cloudflare (Pages / Workers Free Tier)
-The frontend is optimized for **Cloudflare Workers Free Tier (< 1MB script & bundle limit)** with Rollup code-splitting, asset compression, SPA `_redirects`, and security `_headers`.
+### 2. Deploy to Vercel (Production 24/7 Cloud Hosting)
+The application is pre-configured for **Vercel Serverless & Edge Hosting** with automated CI/CD via GitHub.
 
 ```bash
-cd frontend
-npm run build
-npx wrangler pages deploy dist
+# Push to GitHub to trigger automatic Vercel deployment
+git push origin main
 ```
-Or connect your GitHub repository directly to Cloudflare Pages:
-- **Framework Preset**: `Vite`
-- **Build command**: `npm run build`
-- **Build output directory**: `dist`
-- **Environment variables (Optional)**: `BACKEND_URL` (URL of your remote Python backend)
+Or import directly on [Vercel](https://vercel.com/new) with zero configuration (`vercel.json` automates API routes and Vite frontend bundling).
 
 ---
 

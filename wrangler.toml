@@ -1,7 +1,0 @@
-name = "ai-humanizer"
-compatibility_date = "2024-09-23"
-pages_build_output_dir = "frontend/dist"
-
-[vars]
-# Optional remote backend URL for proxying
-# BACKEND_URL = "https://your-backend.onrender.com"

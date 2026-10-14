@@ -23,10 +23,8 @@ env/
 *.egg-info/
 
 # Large Binaries & Deployment Bundles
-cloudflared.exe
 *.exe
 *.zip
-cloudflare-deployment.zip
 team_submission_zips/
 
 # System & Logs
