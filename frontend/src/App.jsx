@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import AbsoluteDetectorView from './components/AbsoluteDetectorView';
 import AuthModal from './components/AuthModal';
+import HomeShowcase from './components/HomeShowcase';
 import brainLogo from './assets/logo.png';
 
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
@@ -807,21 +808,37 @@ export default function App() {
         <div className="p-8 space-y-6 max-w-7xl mx-auto w-full">
           
           {/* ================================================== */}
-          {/* TAB: HOME & HUMANIZE (MATCHES USER SCREENSHOT)     */}
+          {/* TAB: HOME SHOWCASE (WHAT OUR TOOL DOES)           */}
           {/* ================================================== */}
-          {(activeTab === 'home' || activeTab === 'humanize') && (
+          {activeTab === 'home' && (
+            <HomeShowcase
+              onNavigateToHumanize={(opts) => {
+                if (opts?.context) setContext(opts.context);
+                if (opts?.tone) setTone(opts.tone);
+                if (opts?.text) setInputText(opts.text);
+                setActiveTab('humanize');
+              }}
+              onNavigateToDetector={() => setActiveTab('detector')}
+              onToast={showToast}
+            />
+          )}
+
+          {/* ================================================== */}
+          {/* TAB: HUMANIZE TEXT STUDIO (DEDICATED EDITOR)       */}
+          {/* ================================================== */}
+          {activeTab === 'humanize' && (
             <div className="space-y-6">
               
               {/* Hero Title Section */}
               <div className="space-y-1">
-                <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-                  WELCOME BACK
+                <div className="text-[11px] font-bold tracking-wider text-teal-600 dark:text-teal-400 uppercase">
+                  HUMANIZE TEXT STUDIO
                 </div>
                 <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0f172a] dark:text-white tracking-tight">
                   Make it sound like <span className="font-editorial italic font-normal text-[#0f5c56] dark:text-teal-400">you</span>
                 </h1>
                 <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">
-                  Choose a strategy, paste your draft, and get natural-sounding text back.
+                  Choose a strategy, select your context domain, and set your cadence strength. Get natural-sounding text back.
                 </p>
               </div>
 
@@ -869,16 +886,17 @@ export default function App() {
                     <span className="text-[11px] font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">STRENGTH</span>
                     <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-full border border-slate-200/70 dark:border-slate-700">
                       {[
-                        { id: 'light', label: 'Light' },
-                        { id: 'balanced', label: 'Balanced' },
-                        { id: 'strong', label: 'Strong' }
+                        { id: 'light', label: 'Light', desc: 'Surgical (~90% syntax kept)' },
+                        { id: 'balanced', label: 'Balanced', desc: '100% Turnitin & GPTZero Bypass' },
+                        { id: 'strong', label: 'Strong', desc: 'Full active-voice overhaul' }
                       ].map(st => (
                         <button
                           key={st.id}
                           onClick={() => {
                             setAggressiveness(st.id);
-                            showToast(`Strength: ${st.label}`);
+                            showToast(`Strength: ${st.label} (${st.desc})`);
                           }}
+                          title={st.desc}
                           className={`px-3.5 py-1 rounded-full text-xs transition cursor-pointer ${
                             aggressiveness === st.id
                               ? 'bg-[#0f4c5c] dark:bg-teal-600 text-white font-medium shadow-2xs'
@@ -1197,7 +1215,7 @@ export default function App() {
                 initialText={inputText}
                 onTransferToHumanizer={(text) => {
                   setInputText(text);
-                  setActiveTab('home');
+                  setActiveTab('humanize');
                   showToast('Transferred to Humanizer');
                 }}
                 onToast={showToast}
@@ -1237,7 +1255,7 @@ export default function App() {
                         setInputText(tpl.text);
                         setContext(tpl.context);
                         setTone(tpl.tone);
-                        setActiveTab('home');
+                        setActiveTab('humanize');
                         showToast(`Loaded template: ${tpl.title}`);
                       }}
                       className="mt-4 w-full py-2 bg-slate-50 hover:bg-[#0f5c56] dark:bg-slate-800 dark:hover:bg-teal-600 hover:text-white text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer"

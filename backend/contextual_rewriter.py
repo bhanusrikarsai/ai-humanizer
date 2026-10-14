@@ -121,8 +121,8 @@ class ContextualRewriter:
     def __init__(self, default_engine: str = "gemini"):
         self.default_engine = default_engine
 
-    def build_system_prompt(self, context: str, tone: str, locked_entities: List[str]) -> str:
-        """Constructs system prompt containing context guidelines, tone rules, and locked entities."""
+    def build_system_prompt(self, context: str, tone: str, locked_entities: List[str], aggressiveness: str = "balanced") -> str:
+        """Constructs system prompt containing context guidelines, tone rules, strength levels, and locked entities."""
         tone_guidelines = {
             "stealth": (
                 "- Absolute Stealth Mode (0% AI / 100% Human on Turnitin, GPTZero, CopyLeaks):\n"
@@ -156,6 +156,70 @@ class ContextualRewriter:
             )
         }.get(tone.lower(), "Write naturally, authentically, and eliminate all AI markers.")
 
+        strength_guidelines = {
+            "light": (
+                "STRENGTH DIRECTIVE: LIGHT (SURGICAL PRECISION REFINEMENT)\n"
+                "- Retain ~85-90% of original sentence structures, boundaries, and syntax.\n"
+                "- ONLY replace dead-giveaway robotic AI clichés and transitions (e.g. 'delve into', 'it is crucial to note', 'tapestry', 'testament to', 'in conclusion').\n"
+                "- Do NOT radically rewrite sentences or alter the author's voice; apply minimal, surgical polish."
+            ),
+            "balanced": (
+                "STRENGTH DIRECTIVE: BALANCED (NATURAL HUMANIZATION & 100% BYPASS - DEFAULT)\n"
+                "- Rework robotic phrasing and uniform sentence rhythms into natural human cadence.\n"
+                "- Alternate sentence lengths dynamically (mix short punchy clauses with compound thoughts).\n"
+                "- Eradicate all AI watermarks while strictly preserving every factual detail, number, name, and technical term.\n"
+                "- Guaranteed 100% human pass on Turnitin, GPTZero, and CopyLeaks."
+            ),
+            "strong": (
+                "STRENGTH DIRECTIVE: STRONG (AGGRESSIVE ORGANIC TRANSFORMATION)\n"
+                "- Complete structural overhaul and syntactic reimagining.\n"
+                "- Convert passive voice into active voice, break uniform blocks into bursty sentences, and vary cadence dramatically.\n"
+                "- Inject vivid human vocabulary, spontaneous phrasing, and authentic idioms.\n"
+                "- Absolute 0% AI detection across all 7 detectors with high lexical entropy and burstiness."
+            )
+        }.get((aggressiveness or "balanced").lower(), "Balanced humanization.")
+
+        context_directives = {
+            "Bullet Points & Lists": (
+                "CONTEXT: BULLET POINTS & LISTS\n"
+                "- MANDATORY: The input contains bullet points or lists. You MUST PRESERVE THE BULLET POINT STRUCTURE (- or * or •) or numbering.\n"
+                "- Rewrite each bullet item into a crisp, punchy, human statement without robotic filler.\n"
+                "- NEVER collapse or flatten the list into a single paragraph."
+            ),
+            "Technical & Code": (
+                "CONTEXT: TECHNICAL & CODE\n"
+                "- Strictly preserve all technical terms, algorithms, libraries, code identifiers, variables, latency metrics, and architectural concepts.\n"
+                "- Write cleanly with the authentic precision of a staff software engineer."
+            ),
+            "Recruiter Feedback": (
+                "CONTEXT: RECRUITER FEEDBACK\n"
+                "- Write in the style of an objective hiring manager debriefing a candidate's evaluation.\n"
+                "- Detail problem-solving abilities, technical aptitude, communication clarity, and a clear compensation/hiring recommendation."
+            ),
+            "Candidate Outreach": (
+                "CONTEXT: CANDIDATE OUTREACH\n"
+                "- Write in the style of a thoughtful senior technical recruiter reaching out to top talent.\n"
+                "- Warm personalized hook, compelling team mission and comp/benefits pitch, and a relaxed invitation to connect."
+            ),
+            "Interview Questions": (
+                "CONTEXT: INTERVIEW QUESTIONS\n"
+                "- Frame direct, thoughtful interview questions that explore system design trade-offs, scaling limits, edge cases, and real-world engineering decisions."
+            ),
+            "Summary & Report": (
+                "CONTEXT: SUMMARY & REPORT\n"
+                "- Deliver an executive-level summary emphasizing business impact, metric milestones, and strategic takeaways without corporate clichés."
+            ),
+            "Academic Essay": (
+                "CONTEXT: ACADEMIC ESSAY\n"
+                "- Retain scholarly vocabulary, analytical depth, and formal academic rigor while eliminating formulaic transitions ('Furthermore, Moreover, In conclusion').\n"
+                "- Structure sentences with varied academic cadence to bypass Turnitin AI detection."
+            ),
+            "General writing": (
+                "CONTEXT: GENERAL WRITING\n"
+                "- Engaging, organic human prose with natural flow, rhythm shifts, and authentic voice."
+            )
+        }.get(context, f"Context: {context}")
+
         examples = FEW_SHOT_EXAMPLES.get(context, FEW_SHOT_EXAMPLES["Recruiter Feedback"])
         formatted_examples = ""
         for i, ex in enumerate(examples, 1):
@@ -171,12 +235,21 @@ class ContextualRewriter:
 
 Target Context: {context}
 Target Tone / Bypass Strategy: {tone.capitalize()}
+Selected Strength: {(aggressiveness or 'balanced').capitalize()}
+
+=== STRENGTH DIRECTIVE ===
+{strength_guidelines}
+
+=== CONTEXT DIRECTIVE ===
+{context_directives}
+
+=== TONE DIRECTIVE ===
+{tone_guidelines}
 
 CRITICAL HUMANIZATION DIRECTIVES (TO ACHIEVE 0% AI DETECTION):
 1. HIGH BURSTINESS: Aggressively break uniform sentence rhythms. Mix very short punchy sentences (3-6 words) with natural compound thoughts. Humans write with rhythm shifts; AI writes in uniform blocks.
 2. HIGH LEXICAL ENTROPY: Use spontaneous, vivid, active human vocabulary. Eradicate all robotic corporate clichés and transitions ('delve into', 'it is crucial to note', 'testament to', 'tapestry', 'multifaceted', 'in conclusion', 'furthermore', 'plays a key role', 'remains our top priority', 'underscores the importance').
 3. ORGANIC HUMAN VOICE: Write with real human agency and direct phrasing. Avoid passive, nominalized summaries.
-{tone_guidelines}
 
 STRICT ENTITY PRESERVATION DIRECTIVE:
 You MUST retain all of the following exact entities, numerical scores, metrics, dates, proper names, and technical terms:
@@ -621,15 +694,17 @@ Return ONLY the raw humanized text without any intro, markdown headings, or quot
 
         return result
 
-    def rewrite_gemini(self, text: str, context: str, tone: str, locked_entities: List[str], api_key: Optional[str] = None) -> str:
-        """Call Google Gemini Pro via the google-genai SDK."""
+    def rewrite_gemini(self, text: str, context: str, tone: str, locked_entities: List[str], api_key: Optional[str] = None, aggressiveness: str = "balanced") -> str:
+        """Call Google Gemini Pro via the google-genai SDK with aggressiveness temperature modulation."""
         key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or ""
 
         from google import genai
         client = genai.Client(api_key=key)
 
-        system_instruction = self.build_system_prompt(context, tone, locked_entities)
-        user_prompt = f"Rewrite this text into 100% natural, human-authored writing with high sentence burstiness, zero AI patterns, and preserved bullet points or list formatting if provided. Keep all facts, numbers, dates, and names:\n\n{text}"
+        agg = (aggressiveness or "balanced").lower()
+        temp = 0.65 if agg == "light" else 1.05 if agg == "strong" else 0.88
+        system_instruction = self.build_system_prompt(context, tone, locked_entities, aggressiveness=agg)
+        user_prompt = f"Rewrite this text into 100% natural, human-authored writing matching strength level '{agg}'. Ensure zero AI patterns, authentic burstiness, and preserved bullet points or list formatting if provided. Keep all facts, numbers, dates, and names:\n\n{text}"
 
         models_to_try = ["gemini-3.8-flash", "gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
         last_err = None
@@ -640,7 +715,7 @@ Return ONLY the raw humanized text without any intro, markdown headings, or quot
                     contents=user_prompt,
                     config={
                         "system_instruction": system_instruction,
-                        "temperature": 0.88,
+                        "temperature": temp,
                     }
                 )
                 if response and response.text:
@@ -653,7 +728,7 @@ Return ONLY the raw humanized text without any intro, markdown headings, or quot
             raise last_err
         return text
 
-    def rewrite_openai(self, text: str, context: str, tone: str, locked_entities: List[str], api_key: Optional[str] = None) -> str:
+    def rewrite_openai(self, text: str, context: str, tone: str, locked_entities: List[str], api_key: Optional[str] = None, aggressiveness: str = "balanced") -> str:
         """Call OpenAI GPT-4o."""
         key = api_key or os.environ.get("OPENAI_API_KEY")
         if not key:
@@ -662,14 +737,16 @@ Return ONLY the raw humanized text without any intro, markdown headings, or quot
         from openai import OpenAI
         client = OpenAI(api_key=key)
 
-        system_instruction = self.build_system_prompt(context, tone, locked_entities)
+        agg = (aggressiveness or "balanced").lower()
+        temp = 0.4 if agg == "light" else 0.9 if agg == "strong" else 0.65
+        system_instruction = self.build_system_prompt(context, tone, locked_entities, aggressiveness=agg)
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_instruction},
                 {"role": "user", "content": f"Please humanize and rewrite the following text so it reads naturally and is undetectable by AI detectors while keeping all factual numbers, dates, and names:\n\n{text}"}
             ],
-            temperature=0.5
+            temperature=temp
         )
         return response.choices[0].message.content.strip()
 
@@ -698,9 +775,9 @@ Return ONLY the raw humanized text without any intro, markdown headings, or quot
 
         try:
             if selected_engine == "gemini":
-                rewritten_text = self.rewrite_gemini(augmented_text, context, tone, locked_entities, api_key)
+                rewritten_text = self.rewrite_gemini(augmented_text, context, tone, locked_entities, api_key, aggressiveness=aggressiveness)
             elif selected_engine == "openai":
-                rewritten_text = self.rewrite_openai(augmented_text, context, tone, locked_entities, api_key)
+                rewritten_text = self.rewrite_openai(augmented_text, context, tone, locked_entities, api_key, aggressiveness=aggressiveness)
             else:
                 rewritten_text = self.rewrite_local_engine(text, context, tone, locked_entities, flagged_phrases, aggressiveness=aggressiveness)
         except Exception as e:
@@ -713,7 +790,8 @@ Return ONLY the raw humanized text without any intro, markdown headings, or quot
             "engine_used": selected_engine,
             "tone": tone,
             "context": context,
-            "prompt_system_instruction": self.build_system_prompt(context, tone, locked_entities),
+            "aggressiveness": aggressiveness,
+            "prompt_system_instruction": self.build_system_prompt(context, tone, locked_entities, aggressiveness=aggressiveness),
             "had_fallback": error_msg is not None,
             "fallback_error": error_msg
         }

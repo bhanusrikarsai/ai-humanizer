@@ -274,25 +274,26 @@ Output strictly valid JSON with no markdown wrapping:
   return null;
 }
 
-function humanizeLocally(text, context, tone) {
+function humanizeLocally(text, context, tone, aggressiveness = 'balanced') {
   let raw = text.trim();
   const t = (tone || 'stealth').toLowerCase();
+  const agg = (aggressiveness || 'balanced').toLowerCase();
   
   // Clean line by line to preserve bullet points, lists, and formatting
   const lines = raw.split(/\r?\n/);
   const processedLines = lines.map(line => {
     let cleanLine = line;
 
-    // Remove overused AI filler
+    // 1. Remove overused AI filler
     cleanLine = cleanLine
       .replace(/\bIt is crucial to note that\s*/gi, '')
       .replace(/\bIt is paramount to highlight that\s*/gi, '')
       .replace(/\bIt is important to remember that\s*/gi, '')
       .replace(/\bIt should be noted that\s*/gi, '')
-      .replace(/\bFurthermore,\s*/gi, 'Plus, ')
-      .replace(/\bMoreover,\s*/gi, 'Also, ')
-      .replace(/\bIn addition,\s*/gi, 'On top of that, ')
-      .replace(/\bIn conclusion,\s*/gi, 'Bottom line: ')
+      .replace(/\bFurthermore,\s*/gi, agg === 'strong' ? 'And ' : 'Plus, ')
+      .replace(/\bMoreover,\s*/gi, agg === 'strong' ? 'Also, ' : 'Also, ')
+      .replace(/\bIn addition,\s*/gi, agg === 'strong' ? 'On top of that, ' : 'Additionally, ')
+      .replace(/\bIn conclusion,\s*/gi, agg === 'strong' ? 'To wrap up: ' : 'Bottom line: ')
       .replace(/\bIn summary,\s*/gi, 'Overall, ')
       .replace(/\bdelve into\b/gi, 'look at')
       .replace(/\bdelving into\b/gi, 'looking at')
@@ -316,8 +317,8 @@ function humanizeLocally(text, context, tone) {
       .replace(/\bwithout delay\b/gi, 'right away')
       .replace(/\bmeticulous\b/gi, 'thorough');
 
-    // Natural contractions for conversational/stealth/organic tones
-    if (t === 'stealth' || t === 'conversational' || t === 'casual') {
+    // 2. Light vs Balanced vs Strong Cadence & Contractions
+    if (agg !== 'light' && (t === 'stealth' || t === 'conversational' || t === 'casual')) {
       cleanLine = cleanLine
         .replace(/\bwe have\b/gi, "we've")
         .replace(/\bit is\b/gi, "it's")
@@ -328,29 +329,85 @@ function humanizeLocally(text, context, tone) {
         .replace(/\bI have\b/gi, "I've");
     }
 
+    // 3. Strong Mode Extra Active Phrasing
+    if (agg === 'strong') {
+      cleanLine = cleanLine
+        .replace(/\bwas optimized by\b/gi, 'jumped by')
+        .replace(/\bhas been shown to\b/gi, 'proves to')
+        .replace(/\bis characterized by\b/gi, 'relies on')
+        .replace(/\bwe recommend that the team\b/gi, "let's definitely")
+        .replace(/\bwe recommend\b/gi, "we'd definitely recommend");
+    }
+
     return cleanLine;
   });
 
   return processedLines.join('\n').replace(/[ \t]+/g, ' ').trim();
 }
 
-async function runGeminiHumanize(text, context, tone, apiKey) {
+async function runGeminiHumanize(text, context, tone, aggressiveness = 'balanced', apiKey = '') {
   if (!apiKey || !text) return null;
+  const agg = (aggressiveness || 'balanced').toLowerCase();
+
+  const strengthDirectives = {
+    light: `STRENGTH LEVEL: LIGHT (SURGICAL MINIMAL POLISH):
+- Retain ~85-90% of the original phrasing, sentence boundaries, and syntax intact.
+- Strictly replace ONLY dead-giveaway AI clichés ('delve into', 'it is crucial to note', 'tapestry of', 'testament to', 'in conclusion', 'furthermore').
+- Do NOT heavily restructure or reorder clauses; maintain the author's original voice with minimal polish.`,
+    balanced: `STRENGTH LEVEL: BALANCED (NATURAL HUMANIZATION & 100% BYPASS - DEFAULT):
+- Completely humanize robotic sentence flow while keeping all facts, numbers, dates, and technical names 100% preserved.
+- Mix short punchy sentences (4-7 words) with natural compound thoughts for high burstiness.
+- Eliminate all LLM watermarks and formulaic transitions. Guaranteed 100% pass on Turnitin, GPTZero, CopyLeaks.`,
+    strong: `STRENGTH LEVEL: STRONG (AGGRESSIVE ORGANIC TRANSFORMATION):
+- Full syntactic and structural overhaul. Convert passive voice to active voice.
+- Dramatically vary sentence length and cadence (high burstiness & high perplexity).
+- Inject vivid human idioms, natural phrasing, and spontaneous rhythm shifts to achieve absolute 0% AI detection across all detectors.`
+  }[agg] || 'Balanced natural humanization.';
+
+  const contextDirectives = {
+    'Bullet Points & Lists': `CONTEXT: BULLET POINTS & LISTS
+- MANDATORY FORMAT RULE: The input is bullet points or a list. You MUST PRESERVE EVERY BULLET POINT (- or * or •) or numbering.
+- Rewrite each bullet point into an authentic, punchy, human statement. DO NOT combine into a single paragraph.`,
+    'Technical & Code': `CONTEXT: TECHNICAL & CODE
+- Retain 100% exact technical terms, algorithms, libraries, variable names, code snippets, and latency metrics.
+- Write like a senior systems engineer discussing real-world production architectures.`,
+    'Recruiter Feedback': `CONTEXT: RECRUITER FEEDBACK
+- Format as an objective, candid hiring manager debrief.
+- Highlight candidate competencies, system design scores, communication clarity, and clear hiring recommendation.`,
+    'Candidate Outreach': `CONTEXT: CANDIDATE OUTREACH
+- Sound like a high-touch technical recruiter crafting a personalized message.
+- Warm personalized hook, team mission pitch, compelling compensation/perks, and low-friction invitation to connect.`,
+    'Interview Questions': `CONTEXT: INTERVIEW QUESTIONS
+- Direct, thoughtful interview questions exploring system trade-offs, scaling bottlenecks, and failure modes.`,
+    'Summary & Report': `CONTEXT: SUMMARY & REPORT
+- Executive summary highlighting key business outcomes, metric milestones, and strategic takeaways without corporate buzzwords.`,
+    'Academic Essay': `CONTEXT: ACADEMIC ESSAY
+- Scholarly analytical depth and academic rigor. Bypasses Turnitin AI while maintaining formal academic vocabulary.`,
+    'General writing': `CONTEXT: GENERAL WRITING
+- Engaging, organic human prose with natural flow, rhythm shifts, and authentic human cadence.`
+  }[context] || `Context: ${context}`;
+
   const prompt = `You are the Absolute Stealth AI Humanizer & Natural Language Refinement Layer.
 Transform the following text into 100% natural, human-written text that completely bypasses ALL AI detectors (Turnitin, GPTZero, CopyLeaks, Originality.ai, ZeroGPT, Winston AI, CrossPlag).
 
-CRITICAL FORMATTING & REFINEMENT RULES:
+=== SELECTED STRENGTH MODE ===
+${strengthDirectives}
+
+=== SELECTED CONTEXT MODE ===
+${contextDirectives}
+
+=== STRATEGY / TONE ===
+Strategy: ${tone || 'Stealth Ultra'}
+
+CRITICAL FORMATTING & FACTUAL PRESERVATION RULES:
 1. FORMAT PRESERVATION:
-   - If the input is in BULLET POINTS (- or * or •), PRESERVE THE BULLET POINT STRUCTURE. Rewrite each bullet into an authentic, punchy, human-sounding point.
+   - If the input is in BULLET POINTS (- or * or •), PRESERVE THE BULLET POINT STRUCTURE.
    - If the input is in NUMBERED LISTS (1., 2.), PRESERVE THE EXACT NUMBERING.
    - If the input is in PARAGRAPHS, PRESERVE PARAGRAPHS.
 2. DETECTOR ERADICATION:
    - Eradicate ALL AI clichés and LLM watermarks: 'delve into', 'testament to', 'tapestry of', 'it is crucial to note', 'pivotal role', 'furthermore', 'moreover', 'in conclusion', 'beacon of', 'navigating the intricacies', 'game-changer', 'paramount importance', 'multifaceted', 'plethora', 'underscores'.
    - Avoid monotonous sentence lengths. Inject human burstiness, varied rhythms, and natural transitions.
-3. CONTEXT & STRATEGY:
-   - Strategy: ${tone || 'Stealth Ultra (Varied rhythm, natural phrasing)'}.
-   - Context: ${context || 'General writing'}.
-4. FACTUAL INTEGRITY (0% HALLUCINATIONS):
+3. FACTUAL INTEGRITY (0% HALLUCINATIONS):
    - STRICTLY PRESERVE all factual metrics, dates, percentages, names, dollar amounts, and technical terms exactly.
 
 Text to Humanize:
@@ -358,13 +415,16 @@ Text to Humanize:
 
 Output ONLY the final humanized text. Do NOT add preamble, introductory comments, or markdown quote blocks.`;
 
+  const temp = agg === 'light' ? 0.65 : agg === 'strong' ? 1.05 : 0.88;
+
   for (const model of GEMINI_MODELS) {
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: temp }
         })
       });
       if (!res.ok) continue;
@@ -504,14 +564,15 @@ export default async function handler(req, res) {
     const text = body.text || '';
     const tone = body.tone || 'stealth';
     const context = body.context || 'General writing';
+    const aggressiveness = body.aggressiveness || 'balanced';
 
     let rewritten = null;
     if (apiKey) {
-      rewritten = await runGeminiHumanize(text, context, tone, apiKey);
+      rewritten = await runGeminiHumanize(text, context, tone, aggressiveness, apiKey);
     }
 
     if (!rewritten) {
-      rewritten = humanizeLocally(text, context, tone);
+      rewritten = humanizeLocally(text, context, tone, aggressiveness);
     }
 
     return res.status(200).json({
