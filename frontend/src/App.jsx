@@ -653,7 +653,7 @@ export default function App() {
                     {currentUser.name || currentUser.email.split('@')[0]}
                   </div>
                   <div className="text-[9px] text-teal-400 font-medium leading-none">
-                    {currentUser.provider === 'google' ? 'Google Account' : 'Verified Email'}
+                    Verified Account
                   </div>
                 </div>
               </div>
@@ -757,7 +757,7 @@ export default function App() {
                         {currentUser.email}
                       </p>
                       <span className="inline-block mt-1.5 px-2 py-0.5 bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400 rounded-full text-[10px] font-bold border border-teal-200 dark:border-teal-800">
-                        {currentUser.provider === 'google' ? 'Google Account' : 'Email OTP Verified'}
+                        Verified Account
                       </span>
                     </div>
 
@@ -1406,7 +1406,7 @@ export default function App() {
                   <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex items-center justify-between flex-wrap gap-4">
                     <div>
                       <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Not currently signed in</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Sign in with your Google account or email OTP to unlock unlimited bypass.</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Sign in with your email to unlock unlimited bypass.</p>
                     </div>
                     <button
                       onClick={() => setIsAuthModalOpen(true)}

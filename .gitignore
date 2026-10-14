@@ -27,6 +27,7 @@ cloudflared.exe
 *.exe
 *.zip
 cloudflare-deployment.zip
+team_submission_zips/
 
 # System & Logs
 *.log
