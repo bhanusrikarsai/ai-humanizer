@@ -558,10 +558,49 @@ export default async function handler(req, res) {
 
     let emailSent = false;
     let errDetail = null;
+
+    // 1. Try Gmail SMTP (primary)
+    const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER;
+    const smtpPass = process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD;
+    const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
+
+    if (smtpUser && smtpPass) {
+      try {
+        const nodemailer = await import('nodemailer');
+        const transporter = nodemailer.createTransport({
+          host: smtpHost,
+          port: smtpPort,
+          secure: smtpPort === 465,
+          auth: { user: smtpUser, pass: smtpPass }
+        });
+
+        await transporter.sendMail({
+          from: `"AI Humanizer" <${process.env.SMTP_FROM || smtpUser}>`,
+          to: email,
+          subject: `${otp} is your AI Humanizer verification code`,
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0b0f19; padding: 28px; border-radius: 12px; color: #ffffff; max-width: 500px; margin: 0 auto;">
+              <h2 style="color: #10b981; margin-top: 0;">AI Humanizer Security</h2>
+              <p style="color: #e2e8f0; font-size: 15px;">Your 6-digit one-time verification passcode is:</p>
+              <div style="background-color: #131b2e; border: 2px solid #10b981; border-radius: 10px; padding: 14px 24px; text-align: center; margin: 18px 0;">
+                <span style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #38bdf8; font-family: monospace;">${otp}</span>
+              </div>
+              <p style="color: #64748b; font-size: 12px;">This code expires in 10 minutes. Never share this code with anyone.</p>
+            </div>
+          `
+        });
+        emailSent = true;
+      } catch (err) {
+        console.error('SMTP error in serverless:', err);
+        errDetail = err.message || 'SMTP failed';
+      }
+    }
+
     const resendKey = process.env.RESEND_API_KEY;
     const brevoKey = process.env.BREVO_API_KEY;
 
-    if (resendKey) {
+    if (!emailSent && resendKey) {
       try {
         const resendRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',
