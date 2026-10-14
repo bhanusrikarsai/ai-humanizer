@@ -7,6 +7,40 @@
     <title>ai-humanizer</title>
     <meta name="description" content="ai-humanizer: Next-Gen Natural Language & AI Bypass Engine with Turnitin, GPTZero & CopyLeaks bypass, SpaCy entity locking, and NLI factuality validation." />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: '#f0fdf4',
+                500: '#10b981',
+                600: '#059669',
+                700: '#047857',
+                800: '#0f5c56',
+                900: '#0f4c5c',
+              }
+            }
+          }
+        }
+      };
+    </script>
+    <!-- Google Identity Services (GIS) for Real Google Account Sign-In -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Instant Dark Mode Preloader to prevent flicker -->
+    <script>
+      (function() {
+        try {
+          var t = localStorage.getItem('ai_humanizer_theme');
+          if (t === 'dark' || (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Newsreader:ital,opsz,wght@1,6..72,500;1,6..72,600;1,6..72,700&family=Playfair+Display:ital,wght@1,600;1,700&display=swap" rel="stylesheet">
@@ -15,6 +49,11 @@
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         background-color: #F8F9FE;
         letter-spacing: -0.01em;
+        transition: background-color 0.2s ease, color 0.2s ease;
+      }
+      html.dark body {
+        background-color: #0b0f19;
+        color: #f1f5f9;
       }
       .font-editorial {
         font-family: 'Newsreader', 'Playfair Display', Georgia, serif;
@@ -29,9 +68,12 @@
         background-color: #cbd5e1;
         border-radius: 10px;
       }
+      html.dark textarea::-webkit-scrollbar-thumb {
+        background-color: #334155;
+      }
     </style>
   </head>
-  <body>
+  <body class="transition-colors duration-200">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

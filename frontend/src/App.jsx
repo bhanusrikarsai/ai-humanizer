@@ -4,9 +4,11 @@ import {
   Home, FileText, LayoutGrid, Clock, Settings,
   Shield, GraduationCap, Briefcase, MessageSquare, Star,
   Copy, CheckCircle2, Search, ArrowRight, ChevronRight, Sparkles,
-  ShieldAlert, Zap, Plus, Leaf, Check, RefreshCw, X, Download
+  ShieldAlert, Zap, Plus, Leaf, Check, RefreshCw, X, Download,
+  Sun, Moon, LogIn, LogOut, User
 } from 'lucide-react';
 import AbsoluteDetectorView from './components/AbsoluteDetectorView';
+import AuthModal from './components/AuthModal';
 import brainLogo from './assets/logo.png';
 
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
@@ -142,6 +144,63 @@ const EXTENDED_CLICHES_LIST = [
 export default function App() {
   // Navigation Tabs: 'home' | 'humanize' | 'detector' | 'templates' | 'history' | 'settings'
   const [activeTab, setActiveTab] = useState('home');
+
+  // Theme state ('light' | 'dark')
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ai_humanizer_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+      return 'light';
+    } catch (e) {
+      return 'light';
+    }
+  });
+
+  // User Authentication state with session persistence ("when once signed up dont ask again")
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ai_humanizer_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  // Apply Theme class to documentElement
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('ai_humanizer_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('ai_humanizer_theme', 'light');
+    }
+  }, [theme]);
+
+  // Prompt sign in on initial visit if NOT logged in; if already logged in, NEVER ask again!
+  useEffect(() => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    showToast(next === 'dark' ? '🌙 Dark Mode Activated' : '☀️ Light Mode Activated');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('ai_humanizer_user');
+    localStorage.removeItem('ai_humanizer_remember');
+    setCurrentUser(null);
+    setUserMenuOpen(false);
+    showToast('Logged out of AI Humanizer');
+    setIsAuthModalOpen(true);
+  };
 
   // Humanizer state
   const [context, setContext] = useState('General writing');
@@ -471,12 +530,12 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-[#f8fafc] text-slate-800 antialiased overflow-hidden selection:bg-teal-100 selection:text-teal-900 font-sans">
+    <div className="flex h-screen bg-[#f8fafc] dark:bg-[#0b0f19] text-slate-800 dark:text-slate-100 antialiased overflow-hidden selection:bg-teal-100 dark:selection:bg-teal-900 font-sans transition-colors duration-200">
       
       {/* ======================================================== */}
       {/* 1. LEFT SIDEBAR (DARK NAVY / SLATE MATCHING SCREENSHOT)  */}
       {/* ======================================================== */}
-      <aside className="w-60 bg-[#0b1727] text-white flex flex-col justify-between shrink-0 border-r border-[#152438] select-none z-20">
+      <aside className="w-64 bg-[#0b1727] text-white flex flex-col justify-between shrink-0 border-r border-[#152438] select-none z-20">
         <div className="p-4 space-y-6">
           
           {/* Logo brand badge with glassy human brain logo */}
@@ -578,32 +637,162 @@ export default function App() {
           </nav>
         </div>
 
-        {/* Footer info badge */}
-        <div className="p-4 border-t border-[#152438]/80 text-[11px] text-slate-400 flex items-center justify-between">
-          <span>v2.4 Active</span>
-          <span className="text-teal-400 font-medium">● 7-Detector Live</span>
+        {/* Sidebar Footer with User Session & Theme Switch */}
+        <div className="p-3 border-t border-[#152438]/80 space-y-2">
+          {currentUser ? (
+            <div className="flex items-center justify-between px-2 py-1.5 rounded-xl bg-white/5 border border-white/10">
+              <div className="flex items-center gap-2.5 truncate">
+                <img
+                  src={currentUser.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(currentUser.name || currentUser.email)}`}
+                  alt={currentUser.name}
+                  className="w-6 h-6 rounded-full object-cover border border-teal-400/50 shrink-0"
+                />
+                <div className="truncate">
+                  <div className="text-[11px] font-bold text-white truncate leading-tight">
+                    {currentUser.name || currentUser.email.split('@')[0]}
+                  </div>
+                  <div className="text-[9px] text-teal-400 font-medium leading-none">
+                    {currentUser.provider === 'google' ? 'Google Account' : 'Verified Email'}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                title="Sign Out"
+                className="text-slate-400 hover:text-red-400 p-1 rounded-lg transition cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="w-full py-2 px-3 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 border border-teal-500/40 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Sign In / Sign Up</span>
+            </button>
+          )}
+
+          <div className="flex items-center justify-between text-[11px] text-slate-400 px-1 pt-1 border-t border-[#152438]/60">
+            <button
+              onClick={toggleTheme}
+              className="hover:text-white flex items-center gap-1.5 cursor-pointer py-0.5 transition"
+            >
+              {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5" />}
+              <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+            </button>
+            <span className="text-teal-400 font-medium">● 7-Detector</span>
+          </div>
         </div>
       </aside>
 
       {/* ======================================================== */}
       {/* 2. MAIN WORKSPACE CONTENT AREA                           */}
       {/* ======================================================== */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#f8fafc]">
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#f8fafc] dark:bg-[#0b0f19] transition-colors duration-200">
         
         {/* Top Header Bar */}
-        <header className="px-8 py-4 flex items-center justify-between gap-4 border-b border-slate-200/80 bg-white/70 backdrop-blur-sm sticky top-0 z-10">
-          <div className="flex items-center gap-2.5 bg-slate-100/90 border border-slate-200/90 rounded-xl px-3.5 py-1.5 w-full max-w-sm">
+        <header className="px-8 py-3.5 flex items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30 transition-colors">
+          <div className="flex items-center gap-2.5 bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 py-1.5 w-full max-w-sm transition-colors">
             <Search className="w-4 h-4 text-slate-400 shrink-0" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search anything..."
-              className="w-full bg-transparent text-xs text-slate-700 outline-none placeholder:text-slate-400"
+              className="w-full bg-transparent text-xs text-slate-700 dark:text-slate-200 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
             />
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
+            
+            {/* Quick Dark / Light Mode Switcher */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-amber-400 border border-slate-200 dark:border-slate-700 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-600" />
+              )}
+              <span className="text-[11px] font-bold hidden sm:inline text-slate-700 dark:text-slate-200">
+                {theme === 'dark' ? 'Light' : 'Dark'}
+              </span>
+            </button>
+
+            {/* User Profile Pill or Sign In Button */}
+            {currentUser ? (
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-2.5 p-1 pr-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+                >
+                  <img
+                    src={currentUser.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(currentUser.name || currentUser.email)}`}
+                    alt={currentUser.name}
+                    className="w-7 h-7 rounded-full object-cover border border-teal-500/60"
+                  />
+                  <div className="text-left hidden md:block">
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-none">
+                      {currentUser.name || currentUser.email.split('@')[0]}
+                    </div>
+                    <div className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold leading-none mt-0.5">
+                      Pro Unlimited
+                    </div>
+                  </div>
+                </button>
+
+                {/* Dropdown Menu */}
+                {userMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-2 z-50 animate-scale-in text-xs">
+                    <div className="p-3 border-b border-slate-100 dark:border-slate-800">
+                      <p className="font-bold text-slate-900 dark:text-white truncate">
+                        {currentUser.name || 'AI Humanizer User'}
+                      </p>
+                      <p className="text-slate-400 text-[11px] truncate">
+                        {currentUser.email}
+                      </p>
+                      <span className="inline-block mt-1.5 px-2 py-0.5 bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400 rounded-full text-[10px] font-bold border border-teal-200 dark:border-teal-800">
+                        {currentUser.provider === 'google' ? 'Google Account' : 'Email OTP Verified'}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        toggleTheme();
+                        setUserMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-xl text-slate-700 dark:text-slate-300 transition cursor-pointer mt-1"
+                    >
+                      <span>Appearance</span>
+                      <span className="text-[11px] font-semibold text-teal-600 dark:text-teal-400">
+                        {theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl font-semibold transition cursor-pointer mt-1"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0f4c5c] hover:bg-[#0c3e4b] dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Sign In</span>
+              </button>
+            )}
+
             <div 
               onClick={() => setActiveTab('settings')}
               className="w-8 h-8 rounded-full glass-icon-base glass-icon-emerald p-1 flex items-center justify-center cursor-pointer shadow-sm hover:scale-105 transition overflow-hidden"
@@ -628,10 +817,10 @@ export default function App() {
                 <div className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
                   WELCOME BACK
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0f172a] tracking-tight">
-                  Make it sound like <span className="font-editorial italic font-normal text-[#0f5c56]">you</span>
+                <h1 className="text-3xl sm:text-4xl font-extrabold text-[#0f172a] dark:text-white tracking-tight">
+                  Make it sound like <span className="font-editorial italic font-normal text-[#0f5c56] dark:text-teal-400">you</span>
                 </h1>
-                <p className="text-slate-500 text-xs sm:text-sm">
+                <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">
                   Choose a strategy, paste your draft, and get natural-sounding text back.
                 </p>
               </div>
@@ -650,8 +839,8 @@ export default function App() {
                       }}
                       className={`group p-4 rounded-2xl transition-all duration-300 cursor-pointer text-left flex flex-col justify-between min-h-[135px] relative hover:-translate-y-0.5 ${
                         isSelected
-                          ? 'bg-white border-2 border-[#0d9488] shadow-sm ring-2 ring-[#0d9488]/15'
-                          : 'bg-white border border-slate-200/90 hover:border-slate-300 hover:shadow-md'
+                          ? 'bg-white dark:bg-slate-900 border-2 border-[#0d9488] shadow-sm ring-2 ring-[#0d9488]/20'
+                          : 'bg-white dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md'
                       }`}
                     >
                       <div>
@@ -659,10 +848,10 @@ export default function App() {
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3.5 glass-icon-base ${opt.glassClass} shadow-md transition-all duration-300 group-hover:scale-110`}>
                           <IconComp className="w-5 h-5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)] relative z-10" />
                         </div>
-                        <h3 className="text-sm font-bold text-slate-900 leading-snug">
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-snug">
                           {opt.title}
                         </h3>
-                        <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
                           {opt.subtitle}
                         </p>
                       </div>
@@ -672,13 +861,13 @@ export default function App() {
               </div>
 
               {/* Control Bar: STRENGTH | KEEP | Context */}
-              <div className="bg-white rounded-2xl p-2.5 px-5 border border-slate-200/90 shadow-2xs flex flex-wrap items-center justify-between gap-4">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-2.5 px-5 border border-slate-200/90 dark:border-slate-800 shadow-2xs flex flex-wrap items-center justify-between gap-4 transition-colors">
                 <div className="flex flex-wrap items-center gap-5 text-xs">
                   
                   {/* STRENGTH */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold tracking-wider text-slate-500 uppercase">STRENGTH</span>
-                    <div className="flex items-center bg-slate-100 p-0.5 rounded-full border border-slate-200/70">
+                    <span className="text-[11px] font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">STRENGTH</span>
+                    <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-full border border-slate-200/70 dark:border-slate-700">
                       {[
                         { id: 'light', label: 'Light' },
                         { id: 'balanced', label: 'Balanced' },
@@ -692,8 +881,8 @@ export default function App() {
                           }}
                           className={`px-3.5 py-1 rounded-full text-xs transition cursor-pointer ${
                             aggressiveness === st.id
-                              ? 'bg-[#0f4c5c] text-white font-medium shadow-2xs'
-                              : 'text-slate-600 hover:text-slate-900'
+                              ? 'bg-[#0f4c5c] dark:bg-teal-600 text-white font-medium shadow-2xs'
+                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                           }`}
                         >
                           {st.label}
@@ -702,11 +891,11 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+                  <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
 
                   {/* KEEP TOGGLES */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold tracking-wider text-slate-500 uppercase">KEEP</span>
+                    <span className="text-[11px] font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">KEEP</span>
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => {
@@ -715,8 +904,8 @@ export default function App() {
                         }}
                         className={`px-3 py-1 rounded-full text-xs transition border cursor-pointer ${
                           keepFacts
-                            ? 'bg-slate-100 text-slate-800 border-slate-200 font-medium'
-                            : 'bg-white text-slate-400 border-slate-200/70'
+                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 font-medium'
+                            : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200/70 dark:border-slate-800'
                         }`}
                       >
                         Facts & names
@@ -728,8 +917,8 @@ export default function App() {
                         }}
                         className={`px-3 py-1 rounded-full text-xs transition border cursor-pointer ${
                           keepNumbers
-                            ? 'bg-slate-100 text-slate-800 border-slate-200 font-medium'
-                            : 'bg-white text-slate-400 border-slate-200/70'
+                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 font-medium'
+                            : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200/70 dark:border-slate-800'
                         }`}
                       >
                         Numbers
@@ -741,8 +930,8 @@ export default function App() {
                         }}
                         className={`px-3 py-1 rounded-full text-xs transition border cursor-pointer ${
                           keepFormatting
-                            ? 'bg-slate-100 text-slate-800 border-slate-200 font-medium'
-                            : 'bg-white text-slate-400 border-slate-200/70'
+                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 font-medium'
+                            : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200/70 dark:border-slate-800'
                         }`}
                       >
                         Formatting
@@ -753,17 +942,17 @@ export default function App() {
 
                 {/* Context Selector */}
                 <div className="flex items-center gap-1.5 text-xs">
-                  <span className="text-slate-500 font-medium">Context</span>
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Context</span>
                   <select
                     value={context}
                     onChange={(e) => {
                       setContext(e.target.value);
                       showToast(`Context: ${e.target.value}`);
                     }}
-                    className="font-bold text-slate-900 bg-transparent outline-none cursor-pointer hover:text-teal-800 transition"
+                    className="font-bold text-slate-900 dark:text-slate-100 bg-transparent outline-none cursor-pointer hover:text-teal-800 dark:hover:text-teal-400 transition"
                   >
                     {CONTEXT_OPTIONS.map(c => (
-                      <option key={c.id} value={c.id}>{c.label}</option>
+                      <option key={c.id} value={c.id} className="dark:bg-slate-900 dark:text-white">{c.label}</option>
                     ))}
                   </select>
                 </div>
@@ -773,13 +962,13 @@ export default function App() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                 
                 {/* LEFT CARD: Your draft */}
-                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between overflow-hidden min-h-[440px]">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs flex flex-col justify-between overflow-hidden min-h-[440px] transition-colors">
                   
                   {/* Header */}
-                  <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-slate-900">Your draft</span>
-                      <span className="bg-[#e2e8f0] text-slate-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                      <span className="text-sm font-bold text-slate-900 dark:text-white">Your draft</span>
+                      <span className="bg-[#e2e8f0] dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                         {wordCount} words
                       </span>
                     </div>
@@ -789,30 +978,30 @@ export default function App() {
                         setOutputText('');
                         showToast('Draft cleared');
                       }}
-                      className="text-xs text-slate-400 hover:text-slate-600 transition"
+                      className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
                     >
                       Clear
                     </button>
                   </div>
 
                   {/* Body Textarea */}
-                  <div className="p-6 flex-1 flex flex-col relative bg-white">
+                  <div className="p-6 flex-1 flex flex-col relative bg-white dark:bg-slate-900">
                     {isProcessing && <div className="ai-scanline" />}
                     <textarea
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
                       placeholder="Paste your raw text, essay, bullet points, email, or draft here..."
                       rows={12}
-                      className="w-full flex-1 text-slate-800 text-sm leading-relaxed outline-none resize-none placeholder:text-slate-400 bg-transparent min-h-[260px]"
+                      className="w-full flex-1 text-slate-800 dark:text-slate-100 text-sm leading-relaxed outline-none resize-none placeholder:text-slate-400 dark:placeholder:text-slate-500 bg-transparent min-h-[260px]"
                     />
                   </div>
 
                   {/* Footer Bar */}
-                  <div className="px-6 py-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-white">
+                  <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900">
                     <button
                       onClick={handleCheckDetectors}
                       disabled={isCheckingDetectors || !inputText.trim()}
-                      className="bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 font-medium text-xs px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       {isCheckingDetectors ? (
                         <>
@@ -827,7 +1016,7 @@ export default function App() {
                     <button
                       onClick={() => handleHumanize()}
                       disabled={isProcessing || !inputText.trim()}
-                      className="bg-[#0f4c5c] hover:bg-[#0d5c58] text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-xs active:scale-95 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="bg-[#0f4c5c] hover:bg-[#0d5c58] dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-xs active:scale-95 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       {isProcessing ? (
                         <>
@@ -842,13 +1031,13 @@ export default function App() {
                 </div>
 
                 {/* RIGHT CARD: Humanized */}
-                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between overflow-hidden min-h-[440px]">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs flex flex-col justify-between overflow-hidden min-h-[440px] transition-colors">
                   
                   {/* Header */}
-                  <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-slate-900">Humanized</span>
-                      <span className="bg-[#d1fae5] text-[#065f46] text-xs font-medium px-2.5 py-0.5 rounded-full">
+                      <span className="text-sm font-bold text-slate-900 dark:text-white">Humanized</span>
+                      <span className="bg-[#d1fae5] dark:bg-emerald-950/60 text-[#065f46] dark:text-emerald-300 text-xs font-medium px-2.5 py-0.5 rounded-full">
                         {isProcessing ? 'Processing...' : 'Ready'}
                       </span>
                     </div>
@@ -861,8 +1050,8 @@ export default function App() {
                         }}
                         className={`px-3.5 py-1 rounded-full text-xs font-semibold transition cursor-pointer border ${
                           viewMode === 'clean'
-                            ? 'bg-[#0f4c5c] text-white border-[#0f4c5c] shadow-2xs'
-                            : 'bg-white text-slate-600 border-slate-200 hover:text-slate-900'
+                            ? 'bg-[#0f4c5c] dark:bg-teal-600 text-white border-[#0f4c5c] dark:border-teal-600 shadow-2xs'
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'
                         }`}
                       >
                         Clean
@@ -874,8 +1063,8 @@ export default function App() {
                         }}
                         className={`px-3.5 py-1 rounded-full text-xs font-semibold transition cursor-pointer border ${
                           viewMode === 'xray'
-                            ? 'bg-[#0f4c5c] text-white border-[#0f4c5c] shadow-2xs'
-                            : 'bg-white text-slate-600 border-slate-200 hover:text-slate-900'
+                            ? 'bg-[#0f4c5c] dark:bg-teal-600 text-white border-[#0f4c5c] dark:border-teal-600 shadow-2xs'
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'
                         }`}
                       >
                         X-Ray
@@ -883,7 +1072,7 @@ export default function App() {
                       <button
                         onClick={handleCopy}
                         disabled={!outputText}
-                        className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium px-3 py-1 rounded-full shadow-2xs transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium px-3 py-1 rounded-full shadow-2xs transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
                       >
                         <Copy className="w-3 h-3 text-slate-400" />
                         <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -892,19 +1081,19 @@ export default function App() {
                   </div>
 
                   {/* Body Text */}
-                  <div className="p-6 flex-1 flex flex-col overflow-y-auto bg-white">
+                  <div className="p-6 flex-1 flex flex-col overflow-y-auto bg-white dark:bg-slate-900">
                     {outputText ? (
                       viewMode === 'xray' ? (
                         renderXRayDiff()
                       ) : (
                         <>
                           {/* Status Alert Banner */}
-                          <div className="bg-[#e6f4ea] text-[#137333] border border-[#ceead6] text-xs font-medium px-4 py-2.5 rounded-xl mb-4 leading-relaxed">
+                          <div className="bg-[#e6f4ea] dark:bg-emerald-950/40 text-[#137333] dark:text-emerald-300 border border-[#ceead6] dark:border-emerald-900/60 text-xs font-medium px-4 py-2.5 rounded-xl mb-4 leading-relaxed">
                             X-Ray: tightened to {activeStrategy.title} rhythm; facts and terms kept.
                           </div>
 
                           {/* Text Render with bullet point preservation */}
-                          <div className="text-slate-800 text-sm leading-relaxed whitespace-pre-wrap font-sans">
+                          <div className="text-slate-800 dark:text-slate-100 text-sm leading-relaxed whitespace-pre-wrap font-sans">
                             {outputText}
                           </div>
                         </>
@@ -912,15 +1101,15 @@ export default function App() {
                     ) : (
                       <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs py-20 text-center">
                         <Sparkles className="w-8 h-8 mb-2 text-teal-400" />
-                        <p className="font-semibold text-slate-600">Ready to humanize</p>
-                        <p className="text-slate-400 mt-1">Paste your text on the left and click "Humanize now →"</p>
+                        <p className="font-semibold text-slate-600 dark:text-slate-300">Ready to humanize</p>
+                        <p className="text-slate-400 dark:text-slate-500 mt-1">Paste your text on the left and click "Humanize now →"</p>
                       </div>
                     )}
                   </div>
 
                   {/* Footer */}
-                  <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-white text-xs">
-                    <span className="text-slate-500 font-medium flex items-center gap-1.5">
+                  <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 text-xs">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Key terms preserved</span>
                     </span>
@@ -929,7 +1118,7 @@ export default function App() {
                       <button
                         onClick={handleDownloadTxt}
                         disabled={!outputText}
-                        className="text-slate-500 hover:text-slate-700 transition flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                        className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition flex items-center gap-1 cursor-pointer disabled:opacity-40"
                         title="Download text file"
                       >
                         <Download className="w-3.5 h-3.5" />
@@ -943,7 +1132,7 @@ export default function App() {
                           showToast('Output swapped to draft for multi-pass refinement');
                         }}
                         disabled={!outputText}
-                        className="text-[#0f5c56] hover:text-[#0a3f3b] font-semibold cursor-pointer transition disabled:opacity-40"
+                        className="text-[#0f5c56] dark:text-teal-400 hover:text-[#0a3f3b] dark:hover:text-teal-300 font-semibold cursor-pointer transition disabled:opacity-40"
                       >
                         Refine further →
                       </button>
@@ -954,19 +1143,19 @@ export default function App() {
 
               {/* DETECTOR SCAN RESULTS POPUP (WHEN SCANNED) */}
               {detectorData && (
-                <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-2xs space-y-4">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                         Live AI Forensics: {detectorData.verdict}
                       </h3>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         Evaluated across 7 detection suites • {detectorData.detected_model_family || 'Multi-Model Detection'}
                       </p>
                     </div>
                     <button
                       onClick={() => setDetectorData(null)}
-                      className="text-xs text-slate-400 hover:text-slate-600"
+                      className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                     >
                       Dismiss
                     </button>
@@ -1023,24 +1212,24 @@ export default function App() {
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-slate-900">Templates &amp; Presets</h2>
-                <p className="text-xs text-slate-500 mt-1">Pre-tested prompts, bullet points, emails, and technical documentation.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Pre-tested prompts, bullet points, emails, and technical documentation.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {TEMPLATES_DATA.map(tpl => (
                   <div 
                     key={tpl.id}
-                    className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:border-slate-300 transition flex flex-col justify-between"
+                    className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs hover:border-slate-300 dark:hover:border-slate-700 transition flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                           {tpl.category}
                         </span>
                         <span className="text-xs text-slate-400 font-medium capitalize">{tpl.tone}</span>
                       </div>
-                      <h3 className="text-sm font-bold text-slate-900 mb-1">{tpl.title}</h3>
-                      <p className="text-xs text-slate-500 line-clamp-3 leading-relaxed">{tpl.text}</p>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">{tpl.title}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-3 leading-relaxed">{tpl.text}</p>
                     </div>
 
                     <button
@@ -1051,7 +1240,7 @@ export default function App() {
                         setActiveTab('home');
                         showToast(`Loaded template: ${tpl.title}`);
                       }}
-                      className="mt-4 w-full py-2 bg-slate-50 hover:bg-[#0f5c56] hover:text-white text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+                      className="mt-4 w-full py-2 bg-slate-50 hover:bg-[#0f5c56] dark:bg-slate-800 dark:hover:bg-teal-600 hover:text-white text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer"
                     >
                       Use this template →
                     </button>
@@ -1068,15 +1257,15 @@ export default function App() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">Humanization History</h2>
-                  <p className="text-xs text-slate-500 mt-1">Your recent revisions and transformed drafts.</p>
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Humanization History</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Your recent revisions and transformed drafts.</p>
                 </div>
                 <button
                   onClick={() => {
                     setHistoryList([]);
                     showToast('History cleared');
                   }}
-                  className="text-xs text-slate-400 hover:text-slate-600"
+                  className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                 >
                   Clear all
                 </button>
@@ -1086,11 +1275,11 @@ export default function App() {
                 {historyList.map(item => (
                   <div 
                     key={item.id} 
-                    className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-3"
+                    className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3 transition-colors"
                   >
                     <div className="flex items-center justify-between text-xs text-slate-400">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-700">{item.strategy}</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">{item.strategy}</span>
                         <span>•</span>
                         <span>{item.context}</span>
                       </div>
@@ -1098,12 +1287,12 @@ export default function App() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                      <div className="p-3 rounded-xl bg-slate-50 text-slate-600 border border-slate-100">
-                        <div className="font-semibold text-slate-500 mb-1 uppercase text-[10px]">Input Draft:</div>
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-700/60">
+                        <div className="font-semibold text-slate-500 dark:text-slate-400 mb-1 uppercase text-[10px]">Input Draft:</div>
                         <p className="line-clamp-3 leading-relaxed">{item.input}</p>
                       </div>
-                      <div className="p-3 rounded-xl bg-teal-50/50 text-teal-900 border border-teal-100/70">
-                        <div className="font-semibold text-teal-700 mb-1 uppercase text-[10px]">Humanized Result:</div>
+                      <div className="p-3 rounded-xl bg-teal-50/50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 border border-teal-100/70 dark:border-teal-900/60">
+                        <div className="font-semibold text-teal-700 dark:text-teal-300 mb-1 uppercase text-[10px]">Humanized Result:</div>
                         <p className="line-clamp-3 leading-relaxed">{item.output}</p>
                       </div>
                     </div>
@@ -1116,7 +1305,7 @@ export default function App() {
                           setActiveTab('home');
                           showToast('Restored revision to editor');
                         }}
-                        className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition"
+                        className="px-3 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition cursor-pointer"
                       >
                         Restore to editor
                       </button>
@@ -1125,7 +1314,7 @@ export default function App() {
                           navigator.clipboard.writeText(item.output);
                           showToast('Copied to clipboard');
                         }}
-                        className="px-3 py-1 bg-[#0f5c56] text-white text-xs font-semibold rounded-lg transition hover:bg-[#0d5c58]"
+                        className="px-3 py-1 bg-[#0f5c56] dark:bg-teal-600 text-white text-xs font-semibold rounded-lg transition hover:bg-[#0d5c58] dark:hover:bg-teal-500 cursor-pointer"
                       >
                         Copy output
                       </button>
@@ -1140,44 +1329,172 @@ export default function App() {
           {/* TAB: SETTINGS                                      */}
           {/* ================================================== */}
           {activeTab === 'settings' && (
-            <div className="max-w-2xl bg-white p-6 rounded-2xl border border-slate-200/90 shadow-2xs space-y-5">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">Engine Settings</h2>
-                <p className="text-xs text-slate-500 mt-1">Configure your Gemini API Key and model preferences.</p>
+            <div className="max-w-2xl space-y-6">
+              
+              {/* Account Card */}
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-4 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">Account &amp; Security</h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Manage your authenticated session and device persistence.</p>
+                  </div>
+                  {currentUser ? (
+                    <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-full text-xs font-bold flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>Active Session</span>
+                    </span>
+                  ) : (
+                    <span className="px-3 py-1 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-full text-xs font-bold">
+                      Guest Mode
+                    </span>
+                  )}
+                </div>
+
+                {currentUser ? (
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={currentUser.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(currentUser.name || currentUser.email)}`}
+                        alt={currentUser.name}
+                        className="w-12 h-12 rounded-full object-cover border-2 border-teal-500/60 shadow-xs"
+                      />
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                          {currentUser.name || 'AI Humanizer User'}
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {currentUser.email}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300">
+                            {currentUser.provider === 'google' ? 'Google Authenticated' : 'Email OTP Verified'}
+                          </span>
+                          <span className="text-[10px] text-slate-400">Device Saved • Never asks again</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleLogout}
+                        className="px-4 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 font-bold rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Not currently signed in</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Sign in with your Google account or email OTP to unlock unlimited bypass.</p>
+                    </div>
+                    <button
+                      onClick={() => setIsAuthModalOpen(true)}
+                      className="px-5 py-2 bg-[#0f4c5c] hover:bg-[#0c3e4b] dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-xs"
+                    >
+                      Sign In / Sign Up
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-4 text-xs">
+              {/* Appearance / Theme Selector Card */}
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-4 transition-colors">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Google Gemini API Key</label>
-                  <input
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Enter your Gemini API key..."
-                    className="w-full p-2.5 rounded-xl border border-slate-200 outline-none focus:border-teal-600 font-mono"
-                  />
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Default active key is preloaded. All models (ChatGPT, Claude, Gemini, Llama, DeepSeek) are supported.
-                  </p>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">Appearance &amp; Theme</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Customize light or dark mode styling for the entire dashboard.</p>
                 </div>
 
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Primary Detection Engine</label>
-                  <select className="w-full p-2.5 rounded-xl border border-slate-200 outline-none bg-white font-medium">
-                    <option>Google Gemini 3.8 Flash (Active 100% Forensic Engine)</option>
-                    <option>Local Offline Rule Transformer (Zero Latency)</option>
-                  </select>
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    onClick={() => showToast('Settings saved successfully')}
-                    className="px-5 py-2.5 bg-[#0f5c56] hover:bg-[#0d5c58] text-white font-bold rounded-xl transition cursor-pointer"
+                <div className="grid grid-cols-2 gap-3.5">
+                  <div
+                    onClick={() => {
+                      if (theme !== 'light') toggleTheme();
+                    }}
+                    className={`p-4 rounded-xl border-2 transition cursor-pointer flex items-center gap-3 ${
+                      theme === 'light'
+                        ? 'border-teal-600 bg-teal-50/30 dark:bg-teal-950/20 shadow-xs'
+                        : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-slate-300'
+                    }`}
                   >
-                    Save Changes
-                  </button>
+                    <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                      <Sun className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <span>Light Mode</span>
+                        {theme === 'light' && <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />}
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Clean high-contrast daytime workspace</p>
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => {
+                      if (theme !== 'dark') toggleTheme();
+                    }}
+                    className={`p-4 rounded-xl border-2 transition cursor-pointer flex items-center gap-3 ${
+                      theme === 'dark'
+                        ? 'border-teal-500 bg-teal-950/20 shadow-xs'
+                        : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-indigo-950 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-800/50">
+                      <Moon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <span>Dark Mode</span>
+                        {theme === 'dark' && <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />}
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Obsidian midnight palette for low eye strain</p>
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* Gemini Engine Settings */}
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-4 transition-colors">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">Engine Settings</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Configure your Gemini API Key and model preferences.</p>
+                </div>
+
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Google Gemini API Key</label>
+                    <input
+                      type="password"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="Enter your Gemini API key..."
+                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none focus:border-teal-600 font-mono"
+                    />
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                      Default active key is preloaded. All models (ChatGPT, Claude, Gemini, Llama, DeepSeek) are supported.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Primary Detection Engine</label>
+                    <select className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 outline-none bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium">
+                      <option>Google Gemini 3.8 Flash (Active 100% Forensic Engine)</option>
+                      <option>Local Offline Rule Transformer (Zero Latency)</option>
+                    </select>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      onClick={() => showToast('Settings saved successfully')}
+                      className="px-5 py-2.5 bg-[#0f5c56] hover:bg-[#0d5c58] dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </div>
+              </div>
+
             </div>
           )}
 
@@ -1186,11 +1503,23 @@ export default function App() {
 
       {/* Floating Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-xl border border-slate-800 z-50 flex items-center gap-2 animate-bounce">
+        <div className="fixed bottom-6 right-6 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2.5 rounded-xl text-xs font-semibold shadow-xl border border-slate-800 dark:border-slate-200 z-50 flex items-center gap-2 animate-bounce">
           <span>✓</span>
           <span>{toastMsg}</span>
         </div>
       )}
+
+      {/* Authentication Modal (Google Identity + Real Email OTP + Device Persistence) */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        canClose={!!currentUser}
+        onClose={() => setIsAuthModalOpen(false)}
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          setIsAuthModalOpen(false);
+        }}
+        onToast={showToast}
+      />
 
     </div>
   );

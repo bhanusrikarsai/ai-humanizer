@@ -539,5 +539,99 @@ export default async function handler(req, res) {
     });
   }
 
+  // Global in-memory cache for OTPs and users in serverless runtime
+  global.OTP_CACHE = global.OTP_CACHE || new Map();
+  global.USERS_DB = global.USERS_DB || new Map();
+
+  // 6. POST /api/auth/send-otp
+  if (path.endsWith('/auth/send-otp')) {
+    const email = (body.email || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Valid email address required' });
+    }
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    global.OTP_CACHE.set(email, {
+      otp,
+      expiresAt: Date.now() + 600000,
+      name: body.name || email.split('@')[0]
+    });
+    console.log(`\n==================================================\n [AUTH OTP] To: ${email} | Code: ${otp}\n==================================================\n`);
+    return res.status(200).json({
+      success: true,
+      message: `Verification code sent to ${email}`,
+      email,
+      dev_otp: otp,
+      expires_in_seconds: 600
+    });
+  }
+
+  // 7. POST /api/auth/verify-otp
+  if (path.endsWith('/auth/verify-otp')) {
+    const email = (body.email || '').trim().toLowerCase();
+    const otp = (body.otp || '').trim();
+    const stored = global.OTP_CACHE.get(email);
+    if (!stored) {
+      return res.status(400).json({ error: 'No active verification code found. Please request a new code.' });
+    }
+    if (Date.now() > stored.expiresAt) {
+      global.OTP_CACHE.delete(email);
+      return res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
+    }
+    if (stored.otp !== otp) {
+      return res.status(400).json({ error: 'Incorrect verification code. Please check your email and try again.' });
+    }
+    const name = body.name || stored.name || email.split('@')[0];
+    const user = {
+      id: 'usr_' + Math.random().toString(36).substring(2, 9),
+      email,
+      name,
+      avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
+      provider: 'email_otp',
+      verified: true,
+      plan: 'Pro Unlimited',
+      token: 'auth_' + Math.random().toString(36).substring(2, 15)
+    };
+    global.USERS_DB.set(email, user);
+    global.OTP_CACHE.delete(email);
+    return res.status(200).json({ success: true, message: 'Account verified successfully', user });
+  }
+
+  // 8. POST /api/auth/google-login
+  if (path.endsWith('/auth/google-login')) {
+    let email = (body.email || '').trim().toLowerCase();
+    let name = body.name || '';
+    let picture = body.picture || '';
+
+    if (body.credential) {
+      try {
+        const payloadBase64 = body.credential.split('.')[1];
+        const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf-8'));
+        if (payload.email) email = payload.email.trim().toLowerCase();
+        if (payload.name) name = payload.name;
+        if (payload.picture) picture = payload.picture;
+      } catch (e) {
+        console.error('Failed to parse Google JWT in serverless:', e);
+      }
+    }
+
+    if (!email) {
+      return res.status(400).json({ error: 'Google authentication failed: Email missing' });
+    }
+
+    name = name || email.split('@')[0];
+    const user = {
+      id: 'usr_g_' + Math.random().toString(36).substring(2, 9),
+      email,
+      name,
+      avatar: picture || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
+      provider: 'google',
+      verified: true,
+      plan: 'Pro Unlimited',
+      token: 'google_' + Math.random().toString(36).substring(2, 15)
+    };
+    global.USERS_DB.set(email, user);
+    return res.status(200).json({ success: true, message: `Welcome back, ${name}!`, user });
+  }
+
   return res.status(404).json({ error: 'Endpoint not found', path });
 }

@@ -507,4 +507,64 @@ textarea::-webkit-scrollbar-thumb {
     0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
+/* ============================================================
+   DARK MODE PALETTE & AMBIENT SHIFT
+   ============================================================ */
+html.dark .mesh-ambient-bg {
+  background-color: #080c14;
+  background-image: 
+    radial-gradient(at 0% 15%, rgba(30, 41, 59, 0.75) 0px, transparent 50%),
+    radial-gradient(at 95% 15%, rgba(15, 76, 92, 0.45) 0px, transparent 50%),
+    radial-gradient(at 15% 95%, rgba(13, 148, 136, 0.2) 0px, transparent 55%),
+    radial-gradient(at 85% 90%, rgba(30, 58, 138, 0.35) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(15, 23, 42, 0.6) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+html.dark .ambient-aurora-bg {
+  background: radial-gradient(circle at 18% 12%, rgba(59, 130, 246, 0.12) 0%, transparent 45%),
+              radial-gradient(circle at 82% 18%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+              radial-gradient(circle at 50% 35%, rgba(14, 165, 233, 0.08) 0%, transparent 50%);
+}
+
+html.dark .ai-text-gradient-flow {
+  background: linear-gradient(135deg, #60a5fa 0%, #38bdf8 35%, #818cf8 70%, #34d399 100%);
+  background-size: 250% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientTextShift 6s ease infinite;
+}
+
+html.dark .ai-shimmer {
+  background: linear-gradient(90deg, rgba(30, 41, 59, 0.7) 0%, rgba(51, 65, 85, 0.95) 50%, rgba(30, 41, 59, 0.7) 100%);
+  background-size: 200% 100%;
+}
+
+/* Universal Dark Mode Theme Adapters */
+html.dark .bg-white\/95 {
+  background-color: rgba(17, 24, 39, 0.95) !important;
+  border-color: #1f2937 !important;
+}
+
+html.dark .bg-slate-50\/70,
+html.dark .bg-slate-50 {
+  background-color: #162032 !important;
+  border-color: #243048 !important;
+  color: #cbd5e1 !important;
+}
+
+html.dark textarea,
+html.dark input[type="text"],
+html.dark input[type="email"],
+html.dark input[type="password"] {
+  color: #f8fafc !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+
+
 
