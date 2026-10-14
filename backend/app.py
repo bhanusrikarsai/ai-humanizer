@@ -113,11 +113,34 @@ class RememberedLoginRequest(BaseModel):
     stay_signed_in: Optional[bool] = Field(True, description="Remember device")
 
 
+from pathlib import Path
+
 # -------------------------------------------------------------
-# In-Memory Session & OTP Cache
+# Persistent Users Storage & OTP Cache
 # -------------------------------------------------------------
+DATA_DIR = Path(__file__).resolve().parent / "data"
+USERS_FILE = DATA_DIR / "users.json"
+
+def load_users() -> Dict[str, Dict[str, Any]]:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    if USERS_FILE.exists():
+        try:
+            with open(USERS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[USERS_DB LOAD ERROR] {e}")
+    return {}
+
+def save_users(users: Dict[str, Dict[str, Any]]):
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        with open(USERS_FILE, "w", encoding="utf-8") as f:
+            json.dump(users, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"[USERS_DB SAVE ERROR] {e}")
+
 OTP_CACHE: Dict[str, Dict[str, Any]] = {}
-USERS_DB: Dict[str, Dict[str, Any]] = {}
+USERS_DB: Dict[str, Dict[str, Any]] = load_users()
 
 
 def parse_jwt_payload(token: str) -> dict:
@@ -169,7 +192,7 @@ def send_real_email_otp(to_email: str, otp: str, user_name: str = "Creator") -> 
     email_sent = False
     err_message = None
 
-    # 1. Try SMTP / Gmail App Password
+    # 1. Primary: SMTP / Gmail App Password
     if smtp_user and smtp_pass:
         try:
             msg = MIMEMultipart("alternative")
@@ -191,38 +214,7 @@ def send_real_email_otp(to_email: str, otp: str, user_name: str = "Creator") -> 
             err_message = str(e)
             print(f"[AUTH ERROR] Failed to send email via SMTP: {e}")
 
-    # 2. Try Resend API (if configured)
-    resend_key = os.environ.get("RESEND_API_KEY")
-    if not email_sent and resend_key:
-        try:
-            req = urllib.request.Request(
-                "https://api.resend.com/emails",
-                data=json.dumps({
-                    "from": os.environ.get("RESEND_FROM", "AI Humanizer <onboarding@resend.dev>"),
-                    "to": [to_email],
-                    "subject": f"{otp} is your verification code",
-                    "html": html_content
-                }).encode(),
-                headers={
-                    "Authorization": f"Bearer {resend_key}",
-                    "Content-Type": "application/json",
-                    "User-Agent": "AI-Humanizer/1.0"
-                }
-            )
-            with urllib.request.urlopen(req, timeout=10) as r:
-                email_sent = True
-        except urllib.error.HTTPError as e:
-            try:
-                err_body = json.loads(e.read().decode())
-                err_message = err_body.get("message") or str(e)
-            except Exception:
-                err_message = str(e)
-            print(f"[RESEND ERROR] {err_message}")
-        except Exception as e:
-            err_message = str(e)
-            print(f"[RESEND ERROR] {e}")
-
-    # 3. Try Brevo API (if configured)
+    # 2. Secondary fallback: Brevo API (if configured)
     brevo_key = os.environ.get("BREVO_API_KEY")
     if not email_sent and brevo_key:
         try:
@@ -261,7 +253,7 @@ def send_real_email_otp(to_email: str, otp: str, user_name: str = "Creator") -> 
 
     return {
         "email_sent": email_sent,
-        "smtp_configured": bool(smtp_user and smtp_pass or resend_key or brevo_key),
+        "smtp_configured": bool(smtp_user and smtp_pass or brevo_key),
         "err_message": err_message
     }
 
@@ -350,6 +342,7 @@ def auth_verify_otp(req: VerifyOtpRequest):
         "created_at": time.time()
     }
     USERS_DB[email] = user_data
+    save_users(USERS_DB)
     del OTP_CACHE[email]
     
     return {
@@ -392,6 +385,7 @@ def auth_google_login(req: GoogleLoginRequest):
         "created_at": time.time()
     }
     USERS_DB[email] = user_data
+    save_users(USERS_DB)
     
     return {
         "success": True,
@@ -421,11 +415,24 @@ def auth_login_remembered(req: RememberedLoginRequest):
             "created_at": time.time()
         }
         USERS_DB[email] = user_data
+        save_users(USERS_DB)
     
     return {
         "success": True,
         "message": f"Welcome back, {user_data.get('name', 'User')}!",
         "user": user_data
+    }
+
+
+@app.post("/api/auth/clear-data")
+def auth_clear_data():
+    """Clear all stored accounts and OTP sessions to start completely fresh."""
+    USERS_DB.clear()
+    OTP_CACHE.clear()
+    save_users(USERS_DB)
+    return {
+        "success": True,
+        "message": "All user and session data cleared successfully. Starting fresh from now."
     }
 
 

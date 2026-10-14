@@ -597,47 +597,9 @@ export default async function handler(req, res) {
       }
     }
 
-    const resendKey = process.env.RESEND_API_KEY;
     const brevoKey = process.env.BREVO_API_KEY;
 
-    if (!emailSent && resendKey) {
-      try {
-        const resendRes = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${resendKey}`,
-            'Content-Type': 'application/json',
-            'User-Agent': 'AI-Humanizer/1.0'
-          },
-          body: JSON.stringify({
-            from: process.env.RESEND_FROM || 'AI Humanizer <onboarding@resend.dev>',
-            to: [email],
-            subject: `Your AI Humanizer Verification Code: ${otp}`,
-            html: `
-              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0b0f19; padding: 28px; border-radius: 12px; color: #ffffff; max-width: 500px; margin: 0 auto;">
-                <h2 style="color: #10b981; margin-top: 0;">AI Humanizer Account Security</h2>
-                <p style="color: #e2e8f0; font-size: 15px;">Your 6-digit one-time verification passcode is:</p>
-                <div style="background-color: #131b2e; border: 2px solid #10b981; border-radius: 10px; padding: 14px 24px; text-align: center; margin: 18px 0;">
-                  <span style="font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #38bdf8; font-family: monospace;">${otp}</span>
-                </div>
-                <p style="color: #64748b; font-size: 12px;">This code expires in 10 minutes. Never share this code with anyone.</p>
-              </div>
-            `
-          })
-        });
-
-        if (resendRes.ok) {
-          emailSent = true;
-        } else {
-          const errData = await resendRes.json().catch(() => ({}));
-          console.error('Resend dispatch error response:', errData);
-          errDetail = errData.message || 'Resend error';
-        }
-      } catch (err) {
-        console.error('Resend dispatch error:', err);
-        errDetail = err.message || 'Resend connection failed';
-      }
-    } else if (brevoKey) {
+    if (!emailSent && brevoKey) {
       try {
         const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
           method: 'POST',
@@ -767,6 +729,16 @@ export default async function handler(req, res) {
       success: true,
       message: `Welcome back, ${user.name}!`,
       user
+    });
+  }
+
+  // 10. POST /api/auth/clear-data (Clear all stored users & OTPs)
+  if (path.endsWith('/auth/clear-data')) {
+    if (global.USERS_DB) global.USERS_DB.clear();
+    if (global.OTP_CACHE) global.OTP_CACHE.clear();
+    return res.status(200).json({
+      success: true,
+      message: 'All user and session data cleared successfully. Starting fresh from now.'
     });
   }
 

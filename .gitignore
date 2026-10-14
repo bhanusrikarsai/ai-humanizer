@@ -34,3 +34,7 @@ cloudflare-deployment.zip
 Thumbs.db
 .system_generated/
 scratch/
+
+# User database
+backend/data/
+data/

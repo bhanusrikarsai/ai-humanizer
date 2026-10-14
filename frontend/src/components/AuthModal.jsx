@@ -450,6 +450,18 @@ export default function AuthModal({
     }
   };
 
+  // Clear all previous test data on this device and backend
+  const handleClearSavedData = async () => {
+    try {
+      localStorage.removeItem('ai_humanizer_user');
+      localStorage.removeItem('ai_humanizer_remembered_accounts');
+      localStorage.removeItem('ai_humanizer_remember');
+      setRememberedAccounts([]);
+      await fetch(`${API_BASE}/api/auth/clear-data`, { method: 'POST' }).catch(() => {});
+      if (onToast) onToast('✨ Stored accounts wiped clean. Ready for fresh signups!');
+    } catch (e) {}
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -927,8 +939,15 @@ export default function AuthModal({
                   {/* Remembered Accounts List on this device */}
                   {rememberedAccounts.length > 0 && (
                     <div className="space-y-2">
-                      <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Remembered on this Device:
+                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        <span>Remembered on this Device:</span>
+                        <button
+                          type="button"
+                          onClick={handleClearSavedData}
+                          className="text-[10px] text-red-500 hover:text-red-600 dark:text-red-400 font-semibold normal-case hover:underline cursor-pointer"
+                        >
+                          Clear all
+                        </button>
                       </div>
                       {rememberedAccounts.map((acc, idx) => (
                         <button
