@@ -11,6 +11,8 @@ import base64
 import json
 import secrets
 import smtplib
+import urllib.request
+import urllib.error
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional, Dict, Any, List
@@ -201,7 +203,11 @@ def send_real_email_otp(to_email: str, otp: str, user_name: str = "Creator") -> 
                     "subject": f"{otp} is your verification code",
                     "html": html_content
                 }).encode(),
-                headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"}
+                headers={
+                    "Authorization": f"Bearer {resend_key}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "AI-Humanizer/1.0"
+                }
             )
             with urllib.request.urlopen(req, timeout=10) as r:
                 email_sent = True
@@ -220,7 +226,11 @@ def send_real_email_otp(to_email: str, otp: str, user_name: str = "Creator") -> 
                     "subject": f"{otp} is your verification code",
                     "htmlContent": html_content
                 }).encode(),
-                headers={"api-key": brevo_key, "Content-Type": "application/json"}
+                headers={
+                    "api-key": brevo_key,
+                    "Content-Type": "application/json",
+                    "User-Agent": "AI-Humanizer/1.0"
+                }
             )
             with urllib.request.urlopen(req, timeout=10) as r:
                 email_sent = True
