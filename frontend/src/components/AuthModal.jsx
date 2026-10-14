@@ -422,13 +422,49 @@ export default function AuthModal({
   const handleRememberedLogin = async (targetEmail = null, targetName = null) => {
     const cleanEmail = (targetEmail || email).trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
-      setErrorMsg('Please enter a valid Google / Gmail address');
+      setErrorMsg('Please enter a valid email address');
       return;
     }
 
     setVerifyLoading(true);
     setErrorMsg(null);
 
+    // 1. Check local device memory first for instant, reliable login!
+    let savedAcc = null;
+    try {
+      const stored = localStorage.getItem('ai_humanizer_remembered_accounts');
+      const accounts = stored ? JSON.parse(stored) : [];
+      savedAcc = accounts.find(a => a.email && a.email.toLowerCase() === cleanEmail);
+      if (!savedAcc) {
+        const single = localStorage.getItem('ai_humanizer_user');
+        if (single) {
+          const u = JSON.parse(single);
+          if (u && u.email && u.email.toLowerCase() === cleanEmail) {
+            savedAcc = u;
+          }
+        }
+      }
+    } catch (e) {}
+
+    if (savedAcc) {
+      // Instantly log in using verified account from this device
+      finishLogin(savedAcc);
+      // Synchronize with server in the background
+      fetch(`${API_BASE}/api/auth/login-remembered`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: cleanEmail,
+          name: savedAcc.name || targetName || name,
+          saved_user: savedAcc,
+          stay_signed_in: rememberMe
+        })
+      }).catch(() => {});
+      setVerifyLoading(false);
+      return;
+    }
+
+    // 2. Query backend database if not cached on this device
     try {
       const res = await fetch(`${API_BASE}/api/auth/login-remembered`, {
         method: 'POST',

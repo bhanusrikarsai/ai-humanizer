@@ -613,6 +613,33 @@ export default async function handler(req, res) {
   global.OTP_CACHE = global.OTP_CACHE || new Map();
   global.USERS_DB = global.USERS_DB || new Map();
 
+  // Persistent storage in serverless container filesystem (/tmp)
+  let fsModule = null;
+  try {
+    fsModule = await import('fs');
+  } catch (e) {}
+
+  const TMP_USERS_FILE = '/tmp/ai_humanizer_users.json';
+
+  const readServerlessUsers = () => {
+    try {
+      if (fsModule && fsModule.existsSync(TMP_USERS_FILE)) {
+        return JSON.parse(fsModule.readFileSync(TMP_USERS_FILE, 'utf-8'));
+      }
+    } catch (e) {}
+    return {};
+  };
+
+  const writeServerlessUser = (emailKey, userData) => {
+    try {
+      if (fsModule) {
+        const all = readServerlessUsers();
+        all[emailKey.trim().toLowerCase()] = userData;
+        fsModule.writeFileSync(TMP_USERS_FILE, JSON.stringify(all, null, 2), 'utf-8');
+      }
+    } catch (e) {}
+  };
+
   // 6. POST /api/auth/send-otp
   if (path.endsWith('/auth/send-otp')) {
     const email = (body.email || '').trim().toLowerCase();
@@ -816,6 +843,7 @@ export default async function handler(req, res) {
       token: 'auth_' + Math.random().toString(36).substring(2, 15)
     };
     global.USERS_DB.set(email, user);
+    writeServerlessUser(email, user);
     return res.status(200).json({ success: true, message: 'Account verified successfully', user });
   }
 
@@ -862,12 +890,26 @@ export default async function handler(req, res) {
     if (!email || !email.includes('@')) {
       return res.status(400).json({ error: 'Valid email address required' });
     }
-    const user = global.USERS_DB.get(email);
+    const serverlessUsers = readServerlessUsers();
+    let user = global.USERS_DB.get(email) || serverlessUsers[email];
+
+    // If client supplied verified saved_user from this device's previous session, restore it
+    if (!user && body.saved_user && String(body.saved_user.email || '').trim().toLowerCase() === email) {
+      user = body.saved_user;
+      global.USERS_DB.set(email, user);
+      writeServerlessUser(email, user);
+    }
+
     if (!user) {
       return res.status(404).json({
         error: 'Account not found. You must create an account first by verifying your email with OTP.'
       });
     }
+
+    user.last_login_at = Date.now();
+    global.USERS_DB.set(email, user);
+    writeServerlessUser(email, user);
+
     return res.status(200).json({
       success: true,
       message: `Welcome back, ${user.name}!`,

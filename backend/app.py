@@ -120,6 +120,7 @@ class RememberedLoginRequest(BaseModel):
     email: str = Field(..., description="User email for direct remembered login")
     name: Optional[str] = Field(None, description="User display name")
     stay_signed_in: Optional[bool] = Field(True, description="Remember device")
+    saved_user: Optional[Dict[str, Any]] = Field(None, description="Client-side cached verified account")
 
 
 from pathlib import Path
@@ -473,10 +474,26 @@ def auth_login_remembered(req: RememberedLoginRequest):
     
     user_data = USERS_DB.get(email)
     if not user_data:
+        fresh_db = load_users()
+        if email in fresh_db:
+            user_data = fresh_db[email]
+            USERS_DB[email] = user_data
+
+    # Restore from verified client session if available
+    if not user_data and req.saved_user and str(req.saved_user.get("email", "")).strip().lower() == email:
+        user_data = req.saved_user
+        USERS_DB[email] = user_data
+        save_users(USERS_DB)
+    
+    if not user_data:
         raise HTTPException(
             status_code=404,
             detail="Account not found. You must create an account first by verifying your email with OTP."
         )
+    
+    user_data["last_login_at"] = time.time()
+    USERS_DB[email] = user_data
+    save_users(USERS_DB)
     
     return {
         "success": True,
