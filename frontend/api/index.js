@@ -710,20 +710,11 @@ export default async function handler(req, res) {
     if (!email || !email.includes('@')) {
       return res.status(400).json({ error: 'Valid email address required' });
     }
-    let user = global.USERS_DB.get(email);
+    const user = global.USERS_DB.get(email);
     if (!user) {
-      const name = body.name || email.split('@')[0];
-      user = {
-        id: 'usr_' + Math.random().toString(36).substring(2, 9),
-        email,
-        name,
-        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
-        provider: 'remembered_account',
-        verified: true,
-        plan: 'Pro Unlimited',
-        token: 'auth_' + Math.random().toString(36).substring(2, 15)
-      };
-      global.USERS_DB.set(email, user);
+      return res.status(404).json({
+        error: 'Account not found. You must create an account first by verifying your email with OTP.'
+      });
     }
     return res.status(200).json({
       success: true,

@@ -37,12 +37,6 @@ export default function AuthModal({
 
   // Google Authentication States
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [showGoogleChooser, setShowGoogleChooser] = useState(false);
-  const [customGoogleEmail, setCustomGoogleEmail] = useState('');
-  const [customGoogleName, setCustomGoogleName] = useState('');
-  const [isCustomGoogleMode, setIsCustomGoogleMode] = useState(false);
-  const [showClientIdInput, setShowClientIdInput] = useState(false);
-  const [rawClientIdInput, setRawClientIdInput] = useState('');
   const [rememberedAccounts, setRememberedAccounts] = useState([]);
   const otpInputRefs = useRef([]);
 
@@ -137,14 +131,15 @@ export default function AuthModal({
           return;
         }
       } catch (err) {
-        console.warn('Firebase popup notice, switching to Google Account Chooser:', err);
+        console.warn('Firebase popup notice:', err);
       } finally {
         setGoogleLoading(false);
       }
     }
 
-    // 3. Direct Google Account Chooser (Zero friction, 100% works everywhere)
-    setShowGoogleChooser(true);
+    // 3. Fallback: Prompt user to enter their Google / Gmail address for real OTP verification
+    setMode('signup');
+    setErrorMsg('Please enter your Google / Gmail address below to receive your 6-digit verification code.');
   };
 
   // Authenticate Google account with backend/serverless database
@@ -438,13 +433,18 @@ export default function AuthModal({
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || err.detail || 'Login failed');
+        setErrorMsg(err.error || err.detail || 'Account not found. You must create an account first by verifying your email with OTP.');
+        setEmail(cleanEmail);
+        setMode('signup');
+        return;
       }
 
       const data = await res.json();
       finishLogin(data.user);
     } catch (e) {
-      setErrorMsg(e.message || 'Login failed');
+      setErrorMsg(e.message || 'Account not found. You must create an account first by verifying your email with OTP.');
+      setEmail(cleanEmail);
+      setMode('signup');
     } finally {
       setVerifyLoading(false);
     }
@@ -480,202 +480,6 @@ export default function AuthModal({
           </button>
         )}
 
-        {showGoogleChooser ? (
-          /* ========================================================
-             AUTHENTIC GOOGLE ACCOUNT CHOOSER SCREEN
-             ======================================================== */
-          <div className="p-7 space-y-5 animate-fade-in">
-            {/* Google Header */}
-            <div className="text-center space-y-2">
-              <div className="flex justify-center">
-                <svg className="w-10 h-10" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                Sign in with Google
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Choose an account to continue to <strong className="text-slate-800 dark:text-slate-200">AI Humanizer</strong>
-              </p>
-            </div>
-
-            {errorMsg && (
-              <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-xl text-xs text-red-600 dark:text-red-300">
-                {errorMsg}
-              </div>
-            )}
-
-            {/* Google Accounts List */}
-            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl divide-y divide-slate-100 dark:divide-slate-800/80 overflow-hidden shadow-xs bg-white dark:bg-slate-900">
-              
-              {/* Account 1: Bhanu Srikar Sai */}
-              <button
-                type="button"
-                disabled={googleLoading}
-                onClick={() => authenticateGoogleAccount('bhanusrikarsai@gmail.com', 'Bhanu Srikar Sai')}
-                className="w-full p-4 flex items-center gap-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition cursor-pointer text-left group disabled:opacity-50"
-              >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-sm flex items-center justify-center shadow-xs">
-                  B
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition truncate">
-                    Bhanu Srikar Sai
-                  </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                    bhanusrikarsai@gmail.com
-                  </div>
-                </div>
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-xs" title="Google Account Active" />
-              </button>
-
-              {/* Account 2: Custom Google / Gmail input */}
-              {!isCustomGoogleMode ? (
-                <button
-                  type="button"
-                  onClick={() => setIsCustomGoogleMode(true)}
-                  className="w-full p-4 flex items-center gap-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition cursor-pointer text-left text-slate-700 dark:text-slate-300 group"
-                >
-                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 transition">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 text-xs font-semibold">
-                    Use another Google / Gmail account
-                  </div>
-                </button>
-              ) : (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    authenticateGoogleAccount(customGoogleEmail, customGoogleName);
-                  }}
-                  className="p-4 space-y-3 bg-slate-50/50 dark:bg-slate-800/30"
-                >
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                      Google Email Address
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      autoFocus
-                      value={customGoogleEmail}
-                      onChange={(e) => setCustomGoogleEmail(e.target.value)}
-                      placeholder="user@gmail.com"
-                      className="w-full text-xs p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                      Display Name (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={customGoogleName}
-                      onChange={(e) => setCustomGoogleName(e.target.value)}
-                      placeholder="Your Name"
-                      className="w-full text-xs p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      type="submit"
-                      disabled={googleLoading || !customGoogleEmail}
-                      className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition cursor-pointer disabled:opacity-50"
-                    >
-                      {googleLoading ? 'Signing in with Google...' : 'Sign in with Google'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsCustomGoogleMode(false)}
-                      className="px-3 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs rounded-xl transition cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
-
-            {/* Google Notice */}
-            <p className="text-[10px] text-slate-400 leading-relaxed text-center px-2">
-              To continue, Google will share your name, email address, and profile picture with <strong>AI Humanizer</strong>. Before using this app, you can review its terms of service.
-            </p>
-
-            {/* Direct Google Cloud Client ID Connector */}
-            <div className="pt-1 border-t border-slate-100 dark:border-slate-800/80">
-              {!showClientIdInput ? (
-                <button
-                  type="button"
-                  onClick={() => setShowClientIdInput(true)}
-                  className="w-full text-center text-[10px] text-teal-600 dark:text-teal-400 hover:underline flex items-center justify-center gap-1 cursor-pointer font-medium"
-                >
-                  <Settings className="w-2.5 h-2.5" />
-                  Connect Google Cloud Client ID (for official accounts.google.com popup)
-                </button>
-              ) : (
-                <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl space-y-2 border border-slate-200 dark:border-slate-700">
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                    Paste OAuth Client ID from{' '}
-                    <a
-                      href="https://console.cloud.google.com/apis/credentials"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-teal-600 dark:text-teal-400 underline font-semibold"
-                    >
-                      Google Cloud Console
-                    </a>:
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={rawClientIdInput}
-                      onChange={(e) => setRawClientIdInput(e.target.value)}
-                      placeholder="12345-xxx.apps.googleusercontent.com"
-                      className="flex-1 text-[11px] p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (rawClientIdInput.trim()) {
-                          localStorage.setItem('ai_humanizer_google_client_id', rawClientIdInput.trim());
-                          setShowClientIdInput(false);
-                          setShowGoogleChooser(false);
-                          setTimeout(() => handleGoogleClick(), 200);
-                        }
-                      }}
-                      className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-lg cursor-pointer"
-                    >
-                      Save & Launch
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Return link */}
-            <div className="text-center pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowGoogleChooser(false);
-                  setIsCustomGoogleMode(false);
-                }}
-                className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline cursor-pointer"
-              >
-                ← Back to all sign-in options
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* ========================================================
-             STANDARD MODAL BODY (GOOGLE BUTTON + EMAIL OTP)
-             ======================================================== */
-          <>
             {/* Top Header Banner */}
             <div className="p-6 pb-4 border-b border-slate-100 dark:border-slate-800/80 bg-gradient-to-r from-teal-500/10 via-emerald-500/5 to-cyan-500/10">
               <div className="flex items-center gap-3 mb-2">
@@ -1034,8 +838,7 @@ export default function AuthModal({
               )}
 
             </div>
-          </>
-        )}
+
 
         {/* Modal Footer Note */}
         <div className="p-4 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400 text-center flex items-center justify-center gap-1.5">

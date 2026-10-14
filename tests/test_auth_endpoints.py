@@ -83,5 +83,15 @@ class TestAuthEndpoints(unittest.TestCase):
         self.assertEqual(data["user"]["name"], "Srikar")
         self.assertTrue(data["user"].get("token"))
 
+    def test_unregistered_login_without_otp_rejected(self):
+        # Attempting to log in with an email that was never verified with OTP MUST FAIL with 404!
+        login_res = client.post("/api/auth/login-remembered", json={
+            "email": "unverified_stranger@gmail.com"
+        })
+        self.assertEqual(login_res.status_code, 404)
+        data = login_res.json()
+        self.assertIn("Account not found", data.get("detail", ""))
+
 if __name__ == "__main__":
     unittest.main()
+

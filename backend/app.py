@@ -402,20 +402,10 @@ def auth_login_remembered(req: RememberedLoginRequest):
     
     user_data = USERS_DB.get(email)
     if not user_data:
-        name = req.name or email.split("@")[0].title()
-        user_data = {
-            "id": f"usr_{secrets.token_hex(6)}",
-            "email": email,
-            "name": name,
-            "avatar": f"https://api.dicebear.com/7.x/initials/svg?seed={name}",
-            "provider": "remembered_account",
-            "verified": True,
-            "plan": "Pro Unlimited",
-            "token": f"auth_token_{secrets.token_hex(16)}",
-            "created_at": time.time()
-        }
-        USERS_DB[email] = user_data
-        save_users(USERS_DB)
+        raise HTTPException(
+            status_code=404,
+            detail="Account not found. You must create an account first by verifying your email with OTP."
+        )
     
     return {
         "success": True,
