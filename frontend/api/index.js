@@ -633,5 +633,33 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, message: `Welcome back, ${name}!`, user });
   }
 
+  // 9. POST /api/auth/login-remembered (No OTP Needed for Remembered Users)
+  if (path.endsWith('/auth/login-remembered')) {
+    const email = (body.email || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Valid email address required' });
+    }
+    let user = global.USERS_DB.get(email);
+    if (!user) {
+      const name = body.name || email.split('@')[0];
+      user = {
+        id: 'usr_' + Math.random().toString(36).substring(2, 9),
+        email,
+        name,
+        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
+        provider: 'remembered_account',
+        verified: true,
+        plan: 'Pro Unlimited',
+        token: 'auth_' + Math.random().toString(36).substring(2, 15)
+      };
+      global.USERS_DB.set(email, user);
+    }
+    return res.status(200).json({
+      success: true,
+      message: `Welcome back, ${user.name}!`,
+      user
+    });
+  }
+
   return res.status(404).json({ error: 'Endpoint not found', path });
 }

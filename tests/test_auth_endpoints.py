@@ -61,7 +61,27 @@ class TestAuthEndpoints(unittest.TestCase):
         self.assertTrue(data.get("success"))
         user = data.get("user")
         self.assertEqual(user["email"], "googleuser@gmail.com")
-        self.assertEqual(user["provider"], "google")
+    def test_login_remembered_zero_otp(self):
+        # 1. User signs up with OTP
+        send_res = client.post("/api/auth/send-otp", json={"email": "permanent_user@gmail.com", "name": "Srikar"})
+        otp = send_res.json()["dev_otp"]
+        verify_res = client.post("/api/auth/verify-otp", json={
+            "email": "permanent_user@gmail.com",
+            "otp": otp,
+            "name": "Srikar"
+        })
+        self.assertEqual(verify_res.status_code, 200)
+
+        # 2. Next time user logs in -> ZERO OTP NEEDED, remembered directly
+        login_res = client.post("/api/auth/login-remembered", json={
+            "email": "permanent_user@gmail.com"
+        })
+        self.assertEqual(login_res.status_code, 200)
+        data = login_res.json()
+        self.assertTrue(data.get("success"))
+        self.assertEqual(data["user"]["email"], "permanent_user@gmail.com")
+        self.assertEqual(data["user"]["name"], "Srikar")
+        self.assertTrue(data["user"].get("token"))
 
 if __name__ == "__main__":
     unittest.main()

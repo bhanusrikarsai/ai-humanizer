@@ -105,6 +105,12 @@ class GoogleLoginRequest(BaseModel):
     stay_signed_in: Optional[bool] = Field(True, description="Remember device")
 
 
+class RememberedLoginRequest(BaseModel):
+    email: str = Field(..., description="User email for direct remembered login")
+    name: Optional[str] = Field(None, description="User display name")
+    stay_signed_in: Optional[bool] = Field(True, description="Remember device")
+
+
 # -------------------------------------------------------------
 # In-Memory Session & OTP Cache
 # -------------------------------------------------------------
@@ -325,6 +331,36 @@ def auth_google_login(req: GoogleLoginRequest):
         "message": f"Welcome back, {name}!",
         "user": user_data
     }
+
+
+@app.post("/api/auth/login-remembered")
+def auth_login_remembered(req: RememberedLoginRequest):
+    email = req.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="Invalid email address")
+    
+    user_data = USERS_DB.get(email)
+    if not user_data:
+        name = req.name or email.split("@")[0].title()
+        user_data = {
+            "id": f"usr_{secrets.token_hex(6)}",
+            "email": email,
+            "name": name,
+            "avatar": f"https://api.dicebear.com/7.x/initials/svg?seed={name}",
+            "provider": "remembered_account",
+            "verified": True,
+            "plan": "Pro Unlimited",
+            "token": f"auth_token_{secrets.token_hex(16)}",
+            "created_at": time.time()
+        }
+        USERS_DB[email] = user_data
+    
+    return {
+        "success": True,
+        "message": f"Welcome back, {user_data.get('name', 'User')}!",
+        "user": user_data
+    }
+
 
 
 
