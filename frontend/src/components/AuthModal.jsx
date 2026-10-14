@@ -19,9 +19,10 @@ export default function AuthModal({
   onClose,
   onLoginSuccess,
   onToast,
-  canClose = true
+  canClose = true,
+  initialMode = 'signup'
 }) {
-  const [mode, setMode] = useState('login'); // 'login' | 'signup'
+  const [mode, setMode] = useState(initialMode); // 'signup' first, 'login' next
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
@@ -683,23 +684,10 @@ export default function AuthModal({
                 </div>
               </div>
 
-              {/* Tab Selector: Sign In / Create Account */}
+              {/* Tab Selector: 1. Create Account First, 2. Log In Next */}
               <div className="flex p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl mt-4">
                 <button
-                  onClick={() => {
-                    setMode('login');
-                    setErrorMsg(null);
-                    setOtpSent(false);
-                  }}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                    mode === 'login'
-                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
-                  }`}
-                >
-                  Sign In
-                </button>
-                <button
+                  type="button"
                   onClick={() => {
                     setMode('signup');
                     setErrorMsg(null);
@@ -711,7 +699,22 @@ export default function AuthModal({
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
                   }`}
                 >
-                  Create Account
+                  Create Account (1st)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('login');
+                    setErrorMsg(null);
+                    setOtpSent(false);
+                  }}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    mode === 'login'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+                  }`}
+                >
+                  Log In (Next)
                 </button>
               </div>
             </div>
@@ -757,99 +760,8 @@ export default function AuthModal({
                 </span>
               </div>
 
-              {/* 2. MODE === 'LOGIN': ZERO OTP NEEDED - REMEMBER THE ACCOUNT */}
-              {mode === 'login' ? (
-                <div className="space-y-3">
-                  {/* Remembered Accounts List on this device */}
-                  {rememberedAccounts.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Remembered on this Device:
-                      </div>
-                      {rememberedAccounts.map((acc, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          disabled={verifyLoading}
-                          onClick={() => handleRememberedLogin(acc.email, acc.name)}
-                          className="w-full p-3 bg-slate-50 dark:bg-slate-800/80 hover:bg-teal-50/50 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700 hover:border-teal-400 dark:hover:border-teal-500 rounded-2xl flex items-center gap-3 transition text-left cursor-pointer group shadow-2xs"
-                        >
-                          <img
-                            src={acc.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(acc.name || acc.email)}`}
-                            alt={acc.name}
-                            className="w-9 h-9 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 object-cover"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition truncate">
-                              {acc.name || acc.email.split('@')[0]}
-                            </div>
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                              {acc.email}
-                            </div>
-                          </div>
-                          <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-md text-[10px] font-bold">
-                            No OTP
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Direct Email Login Form (No OTP needed for remembered accounts) */}
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleRememberedLogin(email, name);
-                    }}
-                    className="space-y-3 pt-1"
-                  >
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                        {rememberedAccounts.length > 0 ? 'Or Log In with Email:' : 'Google / Gmail Address:'}
-                      </label>
-                      <div className="relative">
-                        <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="user@gmail.com"
-                          required
-                          className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 rounded-xl text-slate-800 dark:text-slate-100 outline-none focus:border-teal-500 transition"
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={verifyLoading || !email.trim()}
-                      className="w-full py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                    >
-                      {verifyLoading ? (
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="w-4 h-4" />
-                      )}
-                      <span>Log In (No OTP Needed)</span>
-                    </button>
-
-                    <div className="text-center pt-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMode('signup');
-                          setErrorMsg(null);
-                          setOtpSent(false);
-                        }}
-                        className="text-xs text-teal-600 dark:text-teal-400 hover:underline font-semibold cursor-pointer"
-                      >
-                        Don't have an account? Create with Email OTP →
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              ) : (
-                /* 3. MODE === 'SIGNUP': MAIL OTP -> USER ENTERS TO CREATE ACCOUNT PERMANENTLY */
+              {/* 2. MODE === 'SIGNUP' (CREATE ACCOUNT FIRST): MAIL OTP -> ENTER TO CREATE PERMANENTLY */}
+              {mode === 'signup' ? (
                 !otpSent ? (
                   <form onSubmit={handleSendOtp} className="space-y-3">
                     <div>
@@ -971,6 +883,7 @@ export default function AuthModal({
                           <span>OTP Code: <strong>{devOtpPreview}</strong></span>
                         </div>
                         <button
+                          type="button"
                           onClick={() => {
                             const arr = devOtpPreview.split('');
                             setOtpDigits(arr);
@@ -985,6 +898,7 @@ export default function AuthModal({
 
                     {/* Verify Button */}
                     <button
+                      type="button"
                       onClick={() => triggerVerification()}
                       disabled={verifyLoading || otpDigits.join('').length !== 6}
                       className="w-full py-2.5 bg-gradient-to-r from-[#0f4c5c] to-emerald-600 hover:from-[#0d404f] hover:to-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
@@ -1005,6 +919,7 @@ export default function AuthModal({
                     {/* Resend & Change Email */}
                     <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1">
                       <button
+                        type="button"
                         onClick={() => {
                           setOtpSent(false);
                           setOtpDigits(['', '', '', '', '', '']);
@@ -1016,6 +931,7 @@ export default function AuthModal({
                       </button>
 
                       <button
+                        type="button"
                         onClick={handleSendOtp}
                         disabled={resendCooldown > 0 || otpLoading}
                         className="text-teal-600 dark:text-teal-400 font-semibold hover:underline disabled:opacity-50 disabled:no-underline cursor-pointer"
@@ -1025,6 +941,97 @@ export default function AuthModal({
                     </div>
                   </div>
                 )
+              ) : (
+                /* 3. MODE === 'LOGIN' (NEXT): ZERO OTP NEEDED - REMEMBER THE ACCOUNT */
+                <div className="space-y-3">
+                  {/* Remembered Accounts List on this device */}
+                  {rememberedAccounts.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        Remembered on this Device:
+                      </div>
+                      {rememberedAccounts.map((acc, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          disabled={verifyLoading}
+                          onClick={() => handleRememberedLogin(acc.email, acc.name)}
+                          className="w-full p-3 bg-slate-50 dark:bg-slate-800/80 hover:bg-teal-50/50 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700 hover:border-teal-400 dark:hover:border-teal-500 rounded-2xl flex items-center gap-3 transition text-left cursor-pointer group shadow-2xs"
+                        >
+                          <img
+                            src={acc.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(acc.name || acc.email)}`}
+                            alt={acc.name}
+                            className="w-9 h-9 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 object-cover"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition truncate">
+                              {acc.name || acc.email.split('@')[0]}
+                            </div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                              {acc.email}
+                            </div>
+                          </div>
+                          <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-md text-[10px] font-bold">
+                            No OTP
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Direct Email Login Form (No OTP needed for remembered accounts) */}
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleRememberedLogin(email, name);
+                    }}
+                    className="space-y-3 pt-1"
+                  >
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                        {rememberedAccounts.length > 0 ? 'Or Log In with Email:' : 'Google / Gmail Address:'}
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="user@gmail.com"
+                          required
+                          className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 rounded-xl text-slate-800 dark:text-slate-100 outline-none focus:border-teal-500 transition"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={verifyLoading || !email.trim()}
+                      className="w-full py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {verifyLoading ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-4 h-4" />
+                      )}
+                      <span>Log In (No OTP Needed)</span>
+                    </button>
+
+                    <div className="text-center pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode('signup');
+                          setErrorMsg(null);
+                          setOtpSent(false);
+                        }}
+                        className="text-xs text-teal-600 dark:text-teal-400 hover:underline font-semibold cursor-pointer"
+                      >
+                        Don't have an account? Create with Email OTP →
+                      </button>
+                    </div>
+                  </form>
+                </div>
               )}
 
             </div>

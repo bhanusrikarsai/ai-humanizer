@@ -670,7 +670,7 @@ export default function App() {
               className="w-full py-2 px-3 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 border border-teal-500/40 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
             >
               <LogIn className="w-3.5 h-3.5" />
-              <span>Sign In / Sign Up</span>
+              <span>Create Account / Log In</span>
             </button>
           )}
 
