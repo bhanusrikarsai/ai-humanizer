@@ -32,7 +32,7 @@ echo 2. Sign in with GitHub and click "Import" next to "ai-humanizer"
 echo 3. Click "Deploy" (vercel.json handles everything automatically!)
 echo.
 echo Once deployed, your site will be permanently live 24/7 at:
-echo   https://ai-humanizer.vercel.app
+echo   https://ai-humanizer-bhanusrikarsai.vercel.app
 echo ======================================================================
 echo.
 pause
