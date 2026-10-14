@@ -32,7 +32,6 @@ export default function AuthModal({
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [otpLoading, setOtpLoading] = useState(false);
   const [verifyLoading, setVerifyLoading] = useState(false);
-  const [devOtpPreview, setDevOtpPreview] = useState(null);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [errorMsg, setErrorMsg] = useState(null);
 
@@ -274,9 +273,6 @@ export default function AuthModal({
       const data = await res.json();
       setOtpSent(true);
       setResendCooldown(60);
-      if (data.dev_otp) {
-        setDevOtpPreview(data.dev_otp);
-      }
 
       if (onToast) {
         onToast(`📬 Verification code sent to ${cleanEmail}`);
@@ -875,26 +871,10 @@ export default function AuthModal({
                       ))}
                     </div>
 
-                    {/* Instant Dev Preview Helper (Guarantees zero friction in testing) */}
-                    {devOtpPreview && (
-                      <div className="p-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl flex items-center justify-between text-xs text-amber-800 dark:text-amber-200">
-                        <div className="flex items-center gap-2">
-                          <KeyRound className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                          <span>OTP Code: <strong>{devOtpPreview}</strong></span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const arr = devOtpPreview.split('');
-                            setOtpDigits(arr);
-                            triggerVerification(devOtpPreview);
-                          }}
-                          className="px-2.5 py-1 bg-amber-200/70 hover:bg-amber-300 dark:bg-amber-800/50 text-amber-900 dark:text-amber-100 rounded-lg font-bold text-[11px] transition cursor-pointer"
-                        >
-                          Auto-Fill
-                        </button>
-                      </div>
-                    )}
+                    {/* Real Email Inbox Notice (No OTP displayed on screen) */}
+                    <div className="p-3 bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/60 rounded-xl text-center text-xs text-teal-800 dark:text-teal-300">
+                      <span>We sent a 6-digit security code to <strong>{email}</strong>. Please check your inbox (and Spam folder) to enter the code.</span>
+                    </div>
 
                     {/* Verify Button */}
                     <button

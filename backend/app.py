@@ -132,9 +132,9 @@ def parse_jwt_payload(token: str) -> dict:
 
 
 def send_real_email_otp(to_email: str, otp: str, user_name: str = "Creator") -> Dict[str, Any]:
-    smtp_host = os.environ.get("SMTP_HOST")
+    smtp_host = os.environ.get("SMTP_HOST") or "smtp.gmail.com"
     smtp_port = int(os.environ.get("SMTP_PORT", 587))
-    smtp_user = os.environ.get("SMTP_USER")
+    smtp_user = os.environ.get("SMTP_USER") or os.environ.get("GMAIL_USER")
     smtp_pass = os.environ.get("SMTP_PASSWORD") or os.environ.get("GMAIL_APP_PASSWORD")
     smtp_from = os.environ.get("SMTP_FROM") or smtp_user or "noreply@ai-humanizer.com"
 
@@ -145,19 +145,19 @@ def send_real_email_otp(to_email: str, otp: str, user_name: str = "Creator") -> 
     <body style="margin: 0; padding: 28px; background-color: #0b0f19; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
       <div style="max-width: 520px; margin: 0 auto; background-color: #131b2e; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; box-shadow: 0 12px 36px rgba(0,0,0,0.5);">
         <div style="padding: 26px 24px; border-bottom: 1px solid #1e293b; text-align: center; background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(15, 76, 92, 0.25));">
-          <h1 style="color: #ffffff; font-size: 21px; font-weight: 800; margin: 0; letter-spacing: -0.02em;">AI Humanizer & Factuality Engine</h1>
-          <p style="color: #10b981; font-size: 12px; font-weight: 700; margin: 6px 0 0 0; text-transform: uppercase; letter-spacing: 1.2px;">Account Security Verification</p>
+          <h1 style="color: #ffffff; font-size: 21px; font-weight: 800; margin: 0; letter-spacing: -0.02em;">AI Humanizer Security</h1>
+          <p style="color: #10b981; font-size: 12px; font-weight: 700; margin: 6px 0 0 0; text-transform: uppercase; letter-spacing: 1.2px;">One-Time Passcode</p>
         </div>
         <div style="padding: 32px 24px; text-align: center;">
           <p style="color: #e2e8f0; font-size: 15px; margin: 0 0 16px 0;">Hello <strong>{user_name}</strong>,</p>
-          <p style="color: #94a3b8; font-size: 14px; margin: 0 0 24px 0; line-height: 1.5;">Your 6-digit one-time passcode to sign in or create your account is:</p>
+          <p style="color: #94a3b8; font-size: 14px; margin: 0 0 24px 0; line-height: 1.5;">Your 6-digit one-time passcode to create your account is:</p>
           <div style="margin: 0 auto; display: inline-block; background-color: #0b0f19; border: 2px solid #10b981; border-radius: 12px; padding: 14px 28px;">
             <span style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #38bdf8; font-family: 'Courier New', Courier, monospace;">{otp}</span>
           </div>
-          <p style="color: #64748b; font-size: 12px; margin: 24px 0 0 0;">This code will expire in <strong>10 minutes</strong>. If you didn't request this email, please disregard it.</p>
+          <p style="color: #64748b; font-size: 12px; margin: 24px 0 0 0;">This code will expire in <strong>10 minutes</strong>. Never share this code with anyone.</p>
         </div>
         <div style="padding: 14px 24px; background-color: #0b0f19; border-top: 1px solid #1e293b; text-align: center;">
-          <p style="color: #475569; font-size: 11px; margin: 0;">AI Humanizer • 100% Bypass & Entity Protection</p>
+          <p style="color: #475569; font-size: 11px; margin: 0;">AI Humanizer • Permanent Account Verification</p>
         </div>
       </div>
     </body>
@@ -167,7 +167,8 @@ def send_real_email_otp(to_email: str, otp: str, user_name: str = "Creator") -> 
     email_sent = False
     err_message = None
 
-    if smtp_host and smtp_user and smtp_pass:
+    # 1. Try SMTP / Gmail App Password
+    if smtp_user and smtp_pass:
         try:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = f"{otp} is your AI Humanizer verification code"
@@ -188,15 +189,55 @@ def send_real_email_otp(to_email: str, otp: str, user_name: str = "Creator") -> 
             err_message = str(e)
             print(f"[AUTH ERROR] Failed to send email via SMTP: {e}")
 
+    # 2. Try Resend API (if configured)
+    resend_key = os.environ.get("RESEND_API_KEY")
+    if not email_sent and resend_key:
+        try:
+            req = urllib.request.Request(
+                "https://api.resend.com/emails",
+                data=json.dumps({
+                    "from": os.environ.get("RESEND_FROM", "AI Humanizer <onboarding@resend.dev>"),
+                    "to": [to_email],
+                    "subject": f"{otp} is your verification code",
+                    "html": html_content
+                }).encode(),
+                headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as r:
+                email_sent = True
+        except Exception as e:
+            print(f"[RESEND ERROR] {e}")
+
+    # 3. Try Brevo API (if configured)
+    brevo_key = os.environ.get("BREVO_API_KEY")
+    if not email_sent and brevo_key:
+        try:
+            req = urllib.request.Request(
+                "https://api.brevo.com/v3/smtp/email",
+                data=json.dumps({
+                    "sender": {"name": "AI Humanizer", "email": os.environ.get("BREVO_FROM", "noreply@ai-humanizer.com")},
+                    "to": [{"email": to_email, "name": user_name}],
+                    "subject": f"{otp} is your verification code",
+                    "htmlContent": html_content
+                }).encode(),
+                headers={"api-key": brevo_key, "Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as r:
+                email_sent = True
+        except Exception as e:
+            print(f"[BREVO ERROR] {e}")
+
     print(f"\n==================================================")
-    print(f" [AUTH OTP] To: {to_email} | OTP: {otp} | SMTP Sent: {email_sent}")
+    print(f" [AUTH OTP DISPATCH] To: {to_email} | Delivered: {email_sent}")
+    if not email_sent:
+        print(f" [NOTICE] To receive real emails in your inbox, set GMAIL_USER and GMAIL_APP_PASSWORD in .env")
     if err_message:
         print(f" [SMTP Detail] {err_message}")
     print(f"==================================================\n")
 
     return {
         "email_sent": email_sent,
-        "smtp_configured": bool(smtp_host and smtp_user and smtp_pass),
+        "smtp_configured": bool(smtp_user and smtp_pass or resend_key or brevo_key),
         "err_message": err_message
     }
 
@@ -249,7 +290,6 @@ def auth_send_otp(req: SendOtpRequest):
         "email": email,
         "email_sent": send_res["email_sent"],
         "smtp_configured": send_res["smtp_configured"],
-        "dev_otp": otp,
         "expires_in_seconds": 600
     }
 

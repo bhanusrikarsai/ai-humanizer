@@ -19,18 +19,18 @@ class TestAuthEndpoints(unittest.TestCase):
         data = res.json()
         self.assertTrue(data.get("success"))
         self.assertEqual(data.get("email"), "tester@gmail.com")
-        self.assertTrue(len(data.get("dev_otp", "")) == 6)
+        self.assertNotIn("dev_otp", data)  # Ensure OTP is NEVER exposed to client
         self.assertIn("tester@gmail.com", OTP_CACHE)
 
     def test_verify_otp_success(self):
         # 1. Send OTP
-        send_res = client.post("/api/auth/send-otp", json={"email": "tester@gmail.com"})
-        dev_otp = send_res.json()["dev_otp"]
+        client.post("/api/auth/send-otp", json={"email": "tester@gmail.com"})
+        otp = OTP_CACHE["tester@gmail.com"]["otp"]
 
         # 2. Verify OTP
         res = client.post("/api/auth/verify-otp", json={
             "email": "tester@gmail.com",
-            "otp": dev_otp,
+            "otp": otp,
             "name": "Bhanu Srikar"
         })
         self.assertEqual(res.status_code, 200)
@@ -63,8 +63,8 @@ class TestAuthEndpoints(unittest.TestCase):
         self.assertEqual(user["email"], "googleuser@gmail.com")
     def test_login_remembered_zero_otp(self):
         # 1. User signs up with OTP
-        send_res = client.post("/api/auth/send-otp", json={"email": "permanent_user@gmail.com", "name": "Srikar"})
-        otp = send_res.json()["dev_otp"]
+        client.post("/api/auth/send-otp", json={"email": "permanent_user@gmail.com", "name": "Srikar"})
+        otp = OTP_CACHE["permanent_user@gmail.com"]["otp"]
         verify_res = client.post("/api/auth/verify-otp", json={
             "email": "permanent_user@gmail.com",
             "otp": otp,

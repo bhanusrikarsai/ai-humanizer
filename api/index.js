@@ -555,12 +555,58 @@ export default async function handler(req, res) {
       expiresAt: Date.now() + 600000,
       name: body.name || email.split('@')[0]
     });
-    console.log(`\n==================================================\n [AUTH OTP] To: ${email} | Code: ${otp}\n==================================================\n`);
+
+    let emailSent = false;
+    const resendKey = process.env.RESEND_API_KEY;
+    const brevoKey = process.env.BREVO_API_KEY;
+
+    if (resendKey) {
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: process.env.RESEND_FROM || 'AI Humanizer <onboarding@resend.dev>',
+            to: [email],
+            subject: `${otp} is your verification code`,
+            html: `<h2>Your AI Humanizer Security Code: <span style="color:#0f5c56;">${otp}</span></h2><p>This code expires in 10 minutes. Never share this code.</p>`
+          })
+        });
+        emailSent = true;
+      } catch (err) {
+        console.error('Resend dispatch error:', err);
+      }
+    } else if (brevoKey) {
+      try {
+        await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'api-key': brevoKey,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sender: { name: 'AI Humanizer', email: process.env.BREVO_FROM || 'noreply@ai-humanizer.com' },
+            to: [{ email }],
+            subject: `${otp} is your verification code`,
+            htmlContent: `<h2>Your AI Humanizer Security Code: <span style="color:#0f5c56;">${otp}</span></h2><p>This code expires in 10 minutes. Never share this code.</p>`
+          })
+        });
+        emailSent = true;
+      } catch (err) {
+        console.error('Brevo dispatch error:', err);
+      }
+    }
+
+    console.log(`\n==================================================\n [AUTH OTP DISPATCH] To: ${email} | Delivered: ${emailSent}\n==================================================\n`);
+
     return res.status(200).json({
       success: true,
       message: `Verification code sent to ${email}`,
       email,
-      dev_otp: otp,
+      email_sent: emailSent,
       expires_in_seconds: 600
     });
   }
