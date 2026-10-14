@@ -557,35 +557,55 @@ export default async function handler(req, res) {
     });
 
     let emailSent = false;
+    let errDetail = null;
     const resendKey = process.env.RESEND_API_KEY;
     const brevoKey = process.env.BREVO_API_KEY;
 
     if (resendKey) {
       try {
-        await fetch('https://api.resend.com/emails', {
+        const resendRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${resendKey}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'User-Agent': 'AI-Humanizer/1.0'
           },
           body: JSON.stringify({
             from: process.env.RESEND_FROM || 'AI Humanizer <onboarding@resend.dev>',
             to: [email],
-            subject: `${otp} is your verification code`,
-            html: `<h2>Your AI Humanizer Security Code: <span style="color:#0f5c56;">${otp}</span></h2><p>This code expires in 10 minutes. Never share this code.</p>`
+            subject: `Your AI Humanizer Verification Code: ${otp}`,
+            html: `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0b0f19; padding: 28px; border-radius: 12px; color: #ffffff; max-width: 500px; margin: 0 auto;">
+                <h2 style="color: #10b981; margin-top: 0;">AI Humanizer Account Security</h2>
+                <p style="color: #e2e8f0; font-size: 15px;">Your 6-digit one-time verification passcode is:</p>
+                <div style="background-color: #131b2e; border: 2px solid #10b981; border-radius: 10px; padding: 14px 24px; text-align: center; margin: 18px 0;">
+                  <span style="font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #38bdf8; font-family: monospace;">${otp}</span>
+                </div>
+                <p style="color: #64748b; font-size: 12px;">This code expires in 10 minutes. Never share this code with anyone.</p>
+              </div>
+            `
           })
         });
-        emailSent = true;
+
+        if (resendRes.ok) {
+          emailSent = true;
+        } else {
+          const errData = await resendRes.json().catch(() => ({}));
+          console.error('Resend dispatch error response:', errData);
+          errDetail = errData.message || 'Resend error';
+        }
       } catch (err) {
         console.error('Resend dispatch error:', err);
+        errDetail = err.message || 'Resend connection failed';
       }
     } else if (brevoKey) {
       try {
-        await fetch('https://api.brevo.com/v3/smtp/email', {
+        const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
           method: 'POST',
           headers: {
             'api-key': brevoKey,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'User-Agent': 'AI-Humanizer/1.0'
           },
           body: JSON.stringify({
             sender: { name: 'AI Humanizer', email: process.env.BREVO_FROM || 'noreply@ai-humanizer.com' },
@@ -594,13 +614,17 @@ export default async function handler(req, res) {
             htmlContent: `<h2>Your AI Humanizer Security Code: <span style="color:#0f5c56;">${otp}</span></h2><p>This code expires in 10 minutes. Never share this code.</p>`
           })
         });
-        emailSent = true;
+        if (brevoRes.ok) emailSent = true;
       } catch (err) {
         console.error('Brevo dispatch error:', err);
       }
     }
 
-    console.log(`\n==================================================\n [AUTH OTP DISPATCH] To: ${email} | Delivered: ${emailSent}\n==================================================\n`);
+    console.log(`\n==================================================\n [AUTH OTP DISPATCH] To: ${email} | Delivered: ${emailSent} | Error: ${errDetail || 'None'}\n==================================================\n`);
+
+    if (!emailSent && errDetail) {
+      return res.status(400).json({ error: `Email delivery issue: ${errDetail}` });
+    }
 
     return res.status(200).json({
       success: true,

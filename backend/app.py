@@ -211,7 +211,15 @@ def send_real_email_otp(to_email: str, otp: str, user_name: str = "Creator") -> 
             )
             with urllib.request.urlopen(req, timeout=10) as r:
                 email_sent = True
+        except urllib.error.HTTPError as e:
+            try:
+                err_body = json.loads(e.read().decode())
+                err_message = err_body.get("message") or str(e)
+            except Exception:
+                err_message = str(e)
+            print(f"[RESEND ERROR] {err_message}")
         except Exception as e:
+            err_message = str(e)
             print(f"[RESEND ERROR] {e}")
 
     # 3. Try Brevo API (if configured)
@@ -234,15 +242,21 @@ def send_real_email_otp(to_email: str, otp: str, user_name: str = "Creator") -> 
             )
             with urllib.request.urlopen(req, timeout=10) as r:
                 email_sent = True
+        except urllib.error.HTTPError as e:
+            try:
+                err_body = json.loads(e.read().decode())
+                err_message = err_body.get("message") or str(e)
+            except Exception:
+                err_message = str(e)
+            print(f"[BREVO ERROR] {err_message}")
         except Exception as e:
+            err_message = str(e)
             print(f"[BREVO ERROR] {e}")
 
     print(f"\n==================================================")
     print(f" [AUTH OTP DISPATCH] To: {to_email} | Delivered: {email_sent}")
-    if not email_sent:
-        print(f" [NOTICE] To receive real emails in your inbox, set GMAIL_USER and GMAIL_APP_PASSWORD in .env")
     if err_message:
-        print(f" [SMTP Detail] {err_message}")
+        print(f" [Delivery Detail] {err_message}")
     print(f"==================================================\n")
 
     return {
@@ -293,6 +307,9 @@ def auth_send_otp(req: SendOtpRequest):
     }
     
     send_res = send_real_email_otp(email, otp, req.name or email.split("@")[0])
+
+    if not send_res["email_sent"] and send_res.get("err_message"):
+        raise HTTPException(status_code=400, detail=f"Email delivery error: {send_res['err_message']}")
     
     return {
         "success": True,
