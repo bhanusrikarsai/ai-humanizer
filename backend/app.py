@@ -34,6 +34,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -705,9 +706,59 @@ def humanize_text(req: HumanizeRequest):
 
 
 # Mount static frontend build if it exists
-frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+frontend_dist = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
+frontend_index = os.path.join(frontend_dist, "index.html")
+
 if os.path.exists(frontend_dist):
-    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
+    assets_dir = os.path.join(frontend_dist, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/", response_class=FileResponse)
+    def serve_root():
+        if os.path.exists(frontend_index):
+            return FileResponse(frontend_index)
+        return HTMLResponse("<h1>Frontend built, but index.html was not found</h1>", status_code=500)
+
+    @app.get("/{full_path:path}", response_class=FileResponse)
+    def serve_spa_fallback(full_path: str):
+        # Allow API endpoints to 404 naturally if non-existent
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API route not found")
+        
+        # If the requested path is a real file in dist (e.g. logo.png, favicon.svg)
+        direct_file = os.path.join(frontend_dist, full_path)
+        if os.path.isfile(direct_file):
+            return FileResponse(direct_file)
+        
+        # Otherwise fallback to index.html for client-side routing
+        if os.path.exists(frontend_index):
+            return FileResponse(frontend_index)
+        raise HTTPException(status_code=404, detail="Frontend index.html not found")
+else:
+    @app.get("/", response_class=HTMLResponse)
+    def serve_fallback_notice():
+        return HTMLResponse("""
+        <!DOCTYPE html>
+        <html>
+        <head><title>AI Humanizer - Service Active</title>
+        <meta http-equiv="refresh" content="5">
+        <style>body{font-family:system-ui,-apple-system,sans-serif;background:#0b0f19;color:#e2e8f0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;}
+        .card{background:#131b2e;border:1px solid #1e293b;padding:36px;border-radius:18px;max-width:500px;box-shadow:0 20px 40px rgba(0,0,0,0.5);}
+        h1{color:#10b981;font-size:24px;margin:0 0 12px 0;}
+        p{color:#94a3b8;line-height:1.6;font-size:14px;}
+        code{background:#0b0f19;padding:4px 8px;border-radius:6px;color:#38bdf8;border:1px solid #1e293b;}
+        </style></head>
+        <body>
+          <div class="card">
+            <h1>Backend API is Online (Port 8000)</h1>
+            <p>The AI Humanizer FastAPI service is loaded and healthy.</p>
+            <p>To compile the web dashboard, execute in terminal:<br/><code>npm run build</code> inside the <code>frontend/</code> directory.</p>
+            <p style="font-size:12px;color:#64748b;margin-top:20px;">This view will auto-refresh immediately once compiled.</p>
+          </div>
+        </body>
+        </html>
+        """)
 
 if __name__ == "__main__":
     import uvicorn
