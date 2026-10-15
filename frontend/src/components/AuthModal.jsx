@@ -434,7 +434,11 @@ export default function AuthModal({
 
     // Save session in localStorage so it never asks again
     localStorage.setItem('ai_humanizer_user', JSON.stringify(user));
-    localStorage.setItem('ai_humanizer_remember', rememberMe ? 'true' : 'false');
+    localStorage.setItem('ai_humanizer_remember', 'true');
+    localStorage.removeItem('ai_humanizer_guest');
+    try {
+      document.cookie = `ai_humanizer_user=${encodeURIComponent(JSON.stringify(user))}; path=/; max-age=315360000; SameSite=Lax`;
+    } catch (e) {}
 
     // Add to permanent remembered accounts list on this device
     try {
@@ -986,9 +990,23 @@ export default function AuthModal({
 
 
         {/* Modal Footer Note */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400 text-center flex items-center justify-center gap-1.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-teal-500" />
-          <span>Once signed in, you won't be asked again on this device.</span>
+        <div className="p-4 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400 text-center flex flex-col items-center justify-center gap-1.5">
+          <div className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
+            <ShieldCheck className="w-3.5 h-3.5 text-teal-500" />
+            <span>Permanent Session Active • Stays Signed In Forever on this device</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                localStorage.setItem('ai_humanizer_guest', 'true');
+              } catch (e) {}
+              onClose();
+            }}
+            className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline underline-offset-2 transition cursor-pointer mt-1"
+          >
+            Skip for now • Continue as Guest
+          </button>
         </div>
 
       </div>

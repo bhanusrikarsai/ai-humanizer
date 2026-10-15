@@ -158,11 +158,37 @@ export default function App() {
     }
   });
 
-  // User Authentication state with session persistence ("when once signed up dont ask again")
+  // User Authentication state with permanent session persistence ("stays in forever")
   const [currentUser, setCurrentUser] = useState(() => {
     try {
+      // 1. Direct active user from localStorage
       const saved = localStorage.getItem('ai_humanizer_user');
-      return saved ? JSON.parse(saved) : null;
+      if (saved) {
+        const u = JSON.parse(saved);
+        if (u && (u.email || u.id)) return u;
+      }
+      // 2. Permanent cookie backup (survives any local storage flushes)
+      if (typeof document !== 'undefined') {
+        const match = document.cookie.match(/(?:^|; )ai_humanizer_user=([^;]*)/);
+        if (match && match[1]) {
+          const parsed = JSON.parse(decodeURIComponent(match[1]));
+          if (parsed && (parsed.email || parsed.id)) {
+            localStorage.setItem('ai_humanizer_user', JSON.stringify(parsed));
+            return parsed;
+          }
+        }
+      }
+      // 3. Fallback to any remembered accounts on this device
+      const stored = localStorage.getItem('ai_humanizer_remembered_accounts');
+      if (stored) {
+        const accounts = JSON.parse(stored);
+        if (Array.isArray(accounts) && accounts.length > 0) {
+          const first = accounts[0];
+          localStorage.setItem('ai_humanizer_user', JSON.stringify(first));
+          return first;
+        }
+      }
+      return null;
     } catch (e) {
       return null;
     }
@@ -188,16 +214,33 @@ export default function App() {
     }
   }, [theme]);
 
-  // Prompt sign in on initial visit if NOT logged in; if already logged in, NEVER ask again!
+  // Sync active user to permanent cookie and storage so they NEVER get logged out
+  useEffect(() => {
+    if (currentUser) {
+      try {
+        localStorage.setItem('ai_humanizer_user', JSON.stringify(currentUser));
+        localStorage.setItem('ai_humanizer_remember', 'true');
+        localStorage.removeItem('ai_humanizer_guest');
+        document.cookie = `ai_humanizer_user=${encodeURIComponent(JSON.stringify(currentUser))}; path=/; max-age=315360000; SameSite=Lax`;
+      } catch (e) {}
+    }
+  }, [currentUser]);
+
+  // Prompt sign in on initial visit ONLY if no user exists and user hasn't chosen guest mode
   useEffect(() => {
     if (!currentUser) {
       try {
-        const stored = localStorage.getItem('ai_humanizer_remembered_accounts');
-        if (stored && JSON.parse(stored)?.length > 0) {
-          setAuthModalMode('login');
+        const isGuest = localStorage.getItem('ai_humanizer_guest') === 'true';
+        if (!isGuest) {
+          const stored = localStorage.getItem('ai_humanizer_remembered_accounts');
+          if (stored && JSON.parse(stored)?.length > 0) {
+            setAuthModalMode('login');
+          }
+          setIsAuthModalOpen(true);
         }
-      } catch (e) {}
-      setIsAuthModalOpen(true);
+      } catch (e) {
+        setIsAuthModalOpen(true);
+      }
     }
   }, []);
 
@@ -208,8 +251,12 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('ai_humanizer_user');
-    localStorage.removeItem('ai_humanizer_remember');
+    try {
+      localStorage.removeItem('ai_humanizer_user');
+      localStorage.removeItem('ai_humanizer_remember');
+      localStorage.removeItem('ai_humanizer_guest');
+      document.cookie = 'ai_humanizer_user=; path=/; max-age=0; SameSite=Lax';
+    } catch (e) {}
     setCurrentUser(null);
     setUserMenuOpen(false);
     showToast('Logged out of AI Humanizer');
@@ -1559,7 +1606,7 @@ export default function App() {
       <AuthModal
         isOpen={isAuthModalOpen}
         initialMode={authModalMode}
-        canClose={!!currentUser}
+        canClose={true}
         onClose={() => setIsAuthModalOpen(false)}
         onLoginSuccess={(user) => {
           setCurrentUser(user);

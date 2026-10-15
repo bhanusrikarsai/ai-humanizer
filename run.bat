@@ -67,9 +67,10 @@ echo.
 :: Automatically open browser once the backend health check passes
 start "" cmd /c "for /l %%i in (1,1,45) do ( curl.exe -s http://127.0.0.1:8000/api/health >nul 2>&1 && ( start http://127.0.0.1:8000 & exit ) || ( ping 127.0.0.1 -n 2 >nul ) ) & start http://127.0.0.1:8000"
 
+:server_loop
 "%PYTHON_EXE%" -m uvicorn backend.app:app --host 127.0.0.1 --port 8000
-if errorlevel 1 (
-    echo.
-    echo [ERROR] Server encountered an error on shutdown.
-    pause
-)
+echo.
+echo [FOREVER WATCHDOG] Process stopped or interrupted.
+echo [FOREVER WATCHDOG] Auto-restarting server in 2 seconds to stay running forever...
+timeout /t 2 /nobreak >nul
+goto server_loop
