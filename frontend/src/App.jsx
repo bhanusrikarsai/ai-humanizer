@@ -3,13 +3,13 @@ import confetti from 'canvas-confetti';
 import {
   Home, FileText, LayoutGrid, Clock, Settings,
   Shield, GraduationCap, Briefcase, MessageSquare, Star,
-  Copy, CheckCircle2, Search, ArrowRight, ChevronRight, Sparkles,
-  ShieldAlert, Zap, Plus, Leaf, Check, RefreshCw, X, Download,
-  Sun, Moon, LogIn, LogOut, User
+  Copy, CheckCircle2, Search, ArrowRight, Sparkles,
+  Leaf, Download, Sun, Moon, LogIn, LogOut
 } from 'lucide-react';
 import AbsoluteDetectorView from './components/AbsoluteDetectorView';
 import AuthModal from './components/AuthModal';
 import HomeShowcase from './components/HomeShowcase';
+import ContextDropdown from './components/ContextDropdown';
 import brainLogo from './assets/logo.png';
 
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
@@ -75,7 +75,7 @@ const CONTEXT_OPTIONS = [
   { id: 'Candidate Outreach', label: 'Candidate Outreach' },
   { id: 'Interview Questions', label: 'Interview Questions' },
   { id: 'Summary & Report', label: 'Summary & Report' },
-  { id: 'Academic Essay', label: 'Academic Essay' }
+  { id: 'Academic Essay', label: 'Academic Essay', hasSparkle: true }
 ];
 
 const STRATEGY_OPTIONS = [
@@ -193,7 +193,15 @@ export default function App() {
       return null;
     }
   });
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(() => {
+    try {
+      const isGuest = localStorage.getItem('ai_humanizer_guest') === 'true';
+      const user = localStorage.getItem('ai_humanizer_user');
+      return !isGuest && !user;
+    } catch (e) {
+      return false;
+    }
+  });
   const [authModalMode, setAuthModalMode] = useState(() => {
     try {
       const stored = localStorage.getItem('ai_humanizer_remembered_accounts');
@@ -226,23 +234,6 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Prompt sign in on initial visit ONLY if no user exists and user hasn't chosen guest mode
-  useEffect(() => {
-    if (!currentUser) {
-      try {
-        const isGuest = localStorage.getItem('ai_humanizer_guest') === 'true';
-        if (!isGuest) {
-          const stored = localStorage.getItem('ai_humanizer_remembered_accounts');
-          if (stored && JSON.parse(stored)?.length > 0) {
-            setAuthModalMode('login');
-          }
-          setIsAuthModalOpen(true);
-        }
-      } catch (e) {
-        setIsAuthModalOpen(true);
-      }
-    }
-  }, []);
 
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -323,9 +314,7 @@ export default function App() {
   // Auto-detect format (e.g. if text is in bullet points)
   useEffect(() => {
     if (inputText.includes('\n- ') || inputText.includes('\n* ') || inputText.includes('\n• ')) {
-      if (context === 'General writing') {
-        setContext('Bullet Points & Lists');
-      }
+      setContext(prev => (prev === 'General writing' ? 'Bullet Points & Lists' : prev));
     }
   }, [inputText]);
 
@@ -496,16 +485,16 @@ export default function App() {
         </div>
 
         {/* Legend bar */}
-        <div className="flex flex-wrap items-center gap-3 p-2.5 bg-slate-50 border border-slate-200/90 rounded-xl text-xs">
-          <span className="flex items-center gap-1.5 font-semibold text-emerald-800">
+        <div className="flex flex-wrap items-center gap-3 p-2.5 glass-panel-subtle rounded-2xl text-xs">
+          <span className="flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-300">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
             Injected Human Flow
           </span>
-          <span className="flex items-center gap-1.5 font-semibold text-blue-800">
+          <span className="flex items-center gap-1.5 font-semibold text-blue-700 dark:text-blue-300">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0"></span>
             Locked Facts &amp; Metrics
           </span>
-          <span className="flex items-center gap-1.5 font-semibold text-rose-700">
+          <span className="flex items-center gap-1.5 font-semibold text-rose-700 dark:text-rose-300">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0"></span>
             Purged AI Markers ({purged.length})
           </span>
@@ -513,15 +502,15 @@ export default function App() {
 
         {/* Purged Clichés Pills */}
         {purged.length > 0 && (
-          <div className="p-3 bg-rose-50/70 border border-rose-200/80 rounded-xl space-y-1.5 text-xs">
-            <div className="text-[10px] uppercase font-bold text-rose-800 tracking-wider">
+          <div className="p-3.5 glass-card-rose rounded-2xl space-y-1.5 text-xs">
+            <div className="text-[10px] uppercase font-bold text-rose-700 dark:text-rose-300 tracking-wider">
               Purged Robotic Markers from Input ({purged.length}):
             </div>
             <div className="flex flex-wrap gap-1.5">
               {purged.map((c, i) => (
                 <span 
                   key={i} 
-                  className="line-through bg-white text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full text-[11px] font-mono shadow-2xs"
+                  className="line-through glass-pill bg-white/70 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300/60 dark:border-rose-500/40 px-2 py-0.5 rounded-full text-[11px] font-mono shadow-2xs"
                   title="Purged during humanization"
                 >
                   {c}
@@ -532,7 +521,7 @@ export default function App() {
         )}
 
         {/* Token-by-Token Highlighted Text Output */}
-        <div className="p-4 bg-slate-50/50 rounded-xl border border-slate-200/80 text-slate-800 text-sm leading-relaxed space-y-2">
+        <div className="p-4 glass-panel-subtle rounded-2xl text-slate-800 dark:text-slate-100 text-sm leading-relaxed space-y-2">
           {paragraphs.map((para, pIdx) => {
             if (!para.trim()) return <div key={pIdx} className="h-2" />;
 
@@ -592,12 +581,21 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-[#f8fafc] dark:bg-[#0b0f19] text-slate-800 dark:text-slate-100 antialiased overflow-hidden selection:bg-teal-100 dark:selection:bg-teal-900 font-sans transition-colors duration-200">
+    <div className="flex h-screen mesh-ambient-bg text-slate-800 dark:text-slate-100 antialiased overflow-hidden selection:bg-teal-100 dark:selection:bg-teal-900 font-sans transition-colors duration-200 relative">
       
+      {/* Ambient Atmospheric Light Orbs for Rich Glass Refraction */}
+      <div className="glass-ambient-orbs">
+        <div className="glass-orb glass-orb-teal" />
+        <div className="glass-orb glass-orb-indigo" />
+        <div className="glass-orb glass-orb-emerald" />
+        <div className="glass-orb glass-orb-cyan" />
+        <div className="glass-orb glass-orb-violet" />
+      </div>
+
       {/* ======================================================== */}
-      {/* 1. LEFT SIDEBAR (DARK NAVY / SLATE MATCHING SCREENSHOT)  */}
+      {/* 1. LEFT SIDEBAR (FROSTED GLASS SMOKED SIDEBAR)          */}
       {/* ======================================================== */}
-      <aside className="w-64 bg-[#0b1727] text-white flex flex-col justify-between shrink-0 border-r border-[#152438] select-none z-20">
+      <aside className="w-64 glass-sidebar text-white flex flex-col justify-between shrink-0 select-none z-20 relative">
         <div className="p-4 space-y-6">
           
           {/* Logo brand badge with glassy human brain logo */}
@@ -624,8 +622,8 @@ export default function App() {
               onClick={() => setActiveTab('home')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer relative ${
                 activeTab === 'home'
-                  ? 'bg-gradient-to-r from-teal-500/25 via-emerald-500/15 to-transparent text-white font-bold shadow-xs border-l-2 border-teal-400 pl-3'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  ? 'bg-gradient-to-r from-teal-500/30 via-emerald-500/20 to-transparent text-white font-bold shadow-sm border border-teal-400/40 pl-3 backdrop-blur-md'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10 hover:backdrop-blur-md'
               }`}
             >
               <Home className={`w-4 h-4 ${activeTab === 'home' ? 'text-teal-400' : 'text-slate-400'}`} />
@@ -636,8 +634,8 @@ export default function App() {
               onClick={() => setActiveTab('humanize')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer relative ${
                 activeTab === 'humanize'
-                  ? 'bg-gradient-to-r from-teal-500/25 via-emerald-500/15 to-transparent text-white font-bold shadow-xs border-l-2 border-teal-400 pl-3'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  ? 'bg-gradient-to-r from-teal-500/30 via-emerald-500/20 to-transparent text-white font-bold shadow-sm border border-teal-400/40 pl-3 backdrop-blur-md'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10 hover:backdrop-blur-md'
               }`}
             >
               <FileText className={`w-4 h-4 ${activeTab === 'humanize' ? 'text-teal-400' : 'text-slate-400'}`} />
@@ -648,8 +646,8 @@ export default function App() {
               onClick={() => setActiveTab('detector')}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer relative ${
                 activeTab === 'detector'
-                  ? 'bg-gradient-to-r from-teal-500/25 via-emerald-500/15 to-transparent text-white font-bold shadow-xs border-l-2 border-teal-400 pl-3'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  ? 'bg-gradient-to-r from-teal-500/30 via-emerald-500/20 to-transparent text-white font-bold shadow-sm border border-teal-400/40 pl-3 backdrop-blur-md'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10 hover:backdrop-blur-md'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -665,8 +663,8 @@ export default function App() {
               onClick={() => setActiveTab('templates')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer relative ${
                 activeTab === 'templates'
-                  ? 'bg-gradient-to-r from-teal-500/25 via-emerald-500/15 to-transparent text-white font-bold shadow-xs border-l-2 border-teal-400 pl-3'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  ? 'bg-gradient-to-r from-teal-500/30 via-emerald-500/20 to-transparent text-white font-bold shadow-sm border border-teal-400/40 pl-3 backdrop-blur-md'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10 hover:backdrop-blur-md'
               }`}
             >
               <LayoutGrid className={`w-4 h-4 ${activeTab === 'templates' ? 'text-teal-400' : 'text-slate-400'}`} />
@@ -677,8 +675,8 @@ export default function App() {
               onClick={() => setActiveTab('history')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer relative ${
                 activeTab === 'history'
-                  ? 'bg-gradient-to-r from-teal-500/25 via-emerald-500/15 to-transparent text-white font-bold shadow-xs border-l-2 border-teal-400 pl-3'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  ? 'bg-gradient-to-r from-teal-500/30 via-emerald-500/20 to-transparent text-white font-bold shadow-sm border border-teal-400/40 pl-3 backdrop-blur-md'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10 hover:backdrop-blur-md'
               }`}
             >
               <Clock className={`w-4 h-4 ${activeTab === 'history' ? 'text-teal-400' : 'text-slate-400'}`} />
@@ -689,8 +687,8 @@ export default function App() {
               onClick={() => setActiveTab('settings')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300 cursor-pointer relative ${
                 activeTab === 'settings'
-                  ? 'bg-gradient-to-r from-teal-500/25 via-emerald-500/15 to-transparent text-white font-bold shadow-xs border-l-2 border-teal-400 pl-3'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  ? 'bg-gradient-to-r from-teal-500/30 via-emerald-500/20 to-transparent text-white font-bold shadow-sm border border-teal-400/40 pl-3 backdrop-blur-md'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10 hover:backdrop-blur-md'
               }`}
             >
               <Settings className={`w-4 h-4 ${activeTab === 'settings' ? 'text-teal-400' : 'text-slate-400'}`} />
@@ -700,9 +698,9 @@ export default function App() {
         </div>
 
         {/* Sidebar Footer with User Session & Theme Switch */}
-        <div className="p-3 border-t border-[#152438]/80 space-y-2">
+        <div className="p-3 border-t border-white/10 space-y-2">
           {currentUser ? (
-            <div className="flex items-center justify-between px-2 py-1.5 rounded-xl bg-white/5 border border-white/10">
+            <div className="flex items-center justify-between px-2.5 py-2 rounded-xl glass-panel-subtle border border-white/10">
               <div className="flex items-center gap-2.5 truncate">
                 <img
                   src={currentUser.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(currentUser.name || currentUser.email)}`}
@@ -732,14 +730,14 @@ export default function App() {
                 setAuthModalMode('login');
                 setIsAuthModalOpen(true);
               }}
-              className="w-full py-2 px-3 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 border border-teal-500/40 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+              className="w-full py-2 px-3 rounded-xl glass-button text-teal-200 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
             >
               <LogIn className="w-3.5 h-3.5" />
               <span>Create Account / Log In</span>
             </button>
           )}
 
-          <div className="flex items-center justify-between text-[11px] text-slate-400 px-1 pt-1 border-t border-[#152438]/60">
+          <div className="flex items-center justify-between text-[11px] text-slate-400 px-1 pt-1 border-t border-white/10">
             <button
               onClick={toggleTheme}
               className="hover:text-white flex items-center gap-1.5 cursor-pointer py-0.5 transition"
@@ -755,11 +753,11 @@ export default function App() {
       {/* ======================================================== */}
       {/* 2. MAIN WORKSPACE CONTENT AREA                           */}
       {/* ======================================================== */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#f8fafc] dark:bg-[#0b0f19] transition-colors duration-200">
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto relative z-10 transition-colors duration-200">
         
-        {/* Top Header Bar */}
-        <header className="px-8 py-3.5 flex items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30 transition-colors">
-          <div className="flex items-center gap-2.5 bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200/90 dark:border-slate-700/80 rounded-xl px-3.5 py-1.5 w-full max-w-sm transition-colors">
+        {/* Top Header Bar with Frosted Glassmorphism */}
+        <header className="glass-nav px-8 py-3.5 flex items-center justify-between gap-4 sticky top-0 z-30 transition-colors">
+          <div className="flex items-center gap-2.5 glass-input rounded-xl px-3.5 py-1.5 w-full max-w-sm">
             <Search className="w-4 h-4 text-slate-400 shrink-0" />
             <input
               type="text"
@@ -775,7 +773,7 @@ export default function App() {
             {/* Quick Dark / Light Mode Switcher */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-amber-400 border border-slate-200 dark:border-slate-700 transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+              className="glass-button-secondary p-2 px-3 rounded-xl text-slate-700 dark:text-amber-400 transition cursor-pointer flex items-center gap-1.5"
               title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               {theme === 'dark' ? (
@@ -793,7 +791,7 @@ export default function App() {
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2.5 p-1 pr-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+                  className="flex items-center gap-2.5 p-1 pr-3 glass-button-secondary rounded-full transition cursor-pointer"
                 >
                   <img
                     src={currentUser.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(currentUser.name || currentUser.email)}`}
@@ -812,15 +810,15 @@ export default function App() {
 
                 {/* Dropdown Menu */}
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-2 z-50 animate-scale-in text-xs">
-                    <div className="p-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="absolute right-0 mt-2 w-56 glass-panel rounded-2xl shadow-2xl p-2 z-50 animate-scale-in text-xs border border-white/60 dark:border-white/10">
+                    <div className="p-3 border-b border-white/40 dark:border-white/10">
                       <p className="font-bold text-slate-900 dark:text-white truncate">
                         {currentUser.name || 'AI Humanizer User'}
                       </p>
                       <p className="text-slate-400 text-[11px] truncate">
                         {currentUser.email}
                       </p>
-                      <span className="inline-block mt-1.5 px-2 py-0.5 bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400 rounded-full text-[10px] font-bold border border-teal-200 dark:border-teal-800">
+                      <span className="inline-block mt-1.5 px-2 py-0.5 glass-pill text-teal-700 dark:text-teal-400 rounded-full text-[10px] font-bold">
                         Verified Account
                       </span>
                     </div>
@@ -830,7 +828,7 @@ export default function App() {
                         toggleTheme();
                         setUserMenuOpen(false);
                       }}
-                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/80 rounded-xl text-slate-700 dark:text-slate-300 transition cursor-pointer mt-1"
+                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/20 dark:hover:bg-slate-800/60 rounded-xl text-slate-700 dark:text-slate-300 transition cursor-pointer mt-1"
                     >
                       <span>Appearance</span>
                       <span className="text-[11px] font-semibold text-teal-600 dark:text-teal-400">
@@ -840,7 +838,7 @@ export default function App() {
 
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl font-semibold transition cursor-pointer mt-1"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-500/10 rounded-xl font-semibold transition cursor-pointer mt-1"
                     >
                       <LogOut className="w-3.5 h-3.5" />
                       <span>Sign Out</span>
@@ -854,7 +852,7 @@ export default function App() {
                   setAuthModalMode('login');
                   setIsAuthModalOpen(true);
                 }}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#0f4c5c] hover:bg-[#0c3e4b] dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                className="glass-button flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 <span>Sign In</span>
@@ -926,10 +924,10 @@ export default function App() {
                         setTone(opt.id);
                         showToast(`Strategy: ${opt.title}`);
                       }}
-                      className={`group p-4 rounded-2xl transition-all duration-300 cursor-pointer text-left flex flex-col justify-between min-h-[135px] relative hover:-translate-y-0.5 ${
+                      className={`glass-card p-4 rounded-2xl transition-all duration-300 cursor-pointer text-left flex flex-col justify-between min-h-[135px] relative group ${
                         isSelected
-                          ? 'bg-white dark:bg-slate-900 border-2 border-[#0d9488] shadow-sm ring-2 ring-[#0d9488]/20'
-                          : 'bg-white dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md'
+                          ? 'ring-2 ring-teal-500/80 shadow-[0_10px_25px_-5px_rgba(13,148,136,0.3)] border-teal-500/80 bg-teal-50/40 dark:bg-teal-950/30'
+                          : 'hover:border-teal-400/50'
                       }`}
                     >
                       <div>
@@ -950,13 +948,13 @@ export default function App() {
               </div>
 
               {/* Control Bar: STRENGTH | KEEP | Context */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-2.5 px-5 border border-slate-200/90 dark:border-slate-800 shadow-2xs flex flex-wrap items-center justify-between gap-4 transition-colors">
+              <div className="glass-panel rounded-2xl p-2.5 px-5 shadow-sm flex flex-wrap items-center justify-between gap-4 transition-colors">
                 <div className="flex flex-wrap items-center gap-5 text-xs">
                   
                   {/* STRENGTH */}
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-bold tracking-wider text-slate-500 dark:text-slate-400 uppercase">STRENGTH</span>
-                    <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-full border border-slate-200/70 dark:border-slate-700">
+                    <div className="flex items-center glass-panel-subtle p-0.5 rounded-full">
                       {[
                         { id: 'light', label: 'Light', desc: 'Surgical (~90% syntax kept)' },
                         { id: 'balanced', label: 'Balanced', desc: '100% Turnitin & GPTZero Bypass' },
@@ -971,7 +969,7 @@ export default function App() {
                           title={st.desc}
                           className={`px-3.5 py-1 rounded-full text-xs transition cursor-pointer ${
                             aggressiveness === st.id
-                              ? 'bg-[#0f4c5c] dark:bg-teal-600 text-white font-medium shadow-2xs'
+                              ? 'bg-[#0f4c5c] dark:bg-teal-600 text-white font-medium shadow-xs'
                               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                           }`}
                         >
@@ -981,7 +979,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
+                  <div className="h-4 w-px bg-slate-300/60 dark:bg-slate-700/60 hidden sm:block" />
 
                   {/* KEEP TOGGLES */}
                   <div className="flex items-center gap-2">
@@ -992,10 +990,10 @@ export default function App() {
                           setKeepFacts(!keepFacts);
                           showToast(keepFacts ? 'Facts locking off' : 'Facts & names locked (100% NER)');
                         }}
-                        className={`px-3 py-1 rounded-full text-xs transition border cursor-pointer ${
+                        className={`px-3 py-1 rounded-full text-xs transition cursor-pointer ${
                           keepFacts
-                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 font-medium'
-                            : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200/70 dark:border-slate-800'
+                            ? 'glass-pill bg-teal-500/15 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300 font-semibold border-teal-500/30'
+                            : 'glass-pill text-slate-400 dark:text-slate-500 opacity-70 hover:opacity-100'
                         }`}
                       >
                         Facts & names
@@ -1005,10 +1003,10 @@ export default function App() {
                           setKeepNumbers(!keepNumbers);
                           showToast(keepNumbers ? 'Numbers locking off' : 'Numbers locked');
                         }}
-                        className={`px-3 py-1 rounded-full text-xs transition border cursor-pointer ${
+                        className={`px-3 py-1 rounded-full text-xs transition cursor-pointer ${
                           keepNumbers
-                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 font-medium'
-                            : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200/70 dark:border-slate-800'
+                            ? 'glass-pill bg-teal-500/15 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300 font-semibold border-teal-500/30'
+                            : 'glass-pill text-slate-400 dark:text-slate-500 opacity-70 hover:opacity-100'
                         }`}
                       >
                         Numbers
@@ -1018,10 +1016,10 @@ export default function App() {
                           setKeepFormatting(!keepFormatting);
                           showToast(keepFormatting ? 'Formatting toggle off' : 'Formatting & bullet structure locked');
                         }}
-                        className={`px-3 py-1 rounded-full text-xs transition border cursor-pointer ${
+                        className={`px-3 py-1 rounded-full text-xs transition cursor-pointer ${
                           keepFormatting
-                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 font-medium'
-                            : 'bg-white dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-200/70 dark:border-slate-800'
+                            ? 'glass-pill bg-teal-500/15 dark:bg-teal-900/30 text-teal-800 dark:text-teal-300 font-semibold border-teal-500/30'
+                            : 'glass-pill text-slate-400 dark:text-slate-500 opacity-70 hover:opacity-100'
                         }`}
                       >
                         Formatting
@@ -1031,34 +1029,28 @@ export default function App() {
                 </div>
 
                 {/* Context Selector */}
-                <div className="flex items-center gap-1.5 text-xs">
-                  <span className="text-slate-500 dark:text-slate-400 font-medium">Context</span>
-                  <select
-                    value={context}
-                    onChange={(e) => {
-                      setContext(e.target.value);
-                      showToast(`Context: ${e.target.value}`);
-                    }}
-                    className="font-bold text-slate-900 dark:text-slate-100 bg-transparent outline-none cursor-pointer hover:text-teal-800 dark:hover:text-teal-400 transition"
-                  >
-                    {CONTEXT_OPTIONS.map(c => (
-                      <option key={c.id} value={c.id} className="dark:bg-slate-900 dark:text-white">{c.label}</option>
-                    ))}
-                  </select>
-                </div>
+                <ContextDropdown
+                  options={CONTEXT_OPTIONS}
+                  value={context}
+                  onChange={(newContext) => {
+                    setContext(newContext);
+                    showToast(`Context: ${newContext}`);
+                  }}
+                  disabled={isProcessing}
+                />
               </div>
 
-              {/* Dual Cards: Your draft vs Humanized */}
+              {/* Dual Cards: Your draft vs Humanized (Frosted Glass Panels) */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                 
                 {/* LEFT CARD: Your draft */}
-                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs flex flex-col justify-between overflow-hidden min-h-[440px] transition-colors">
+                <div className="glass-panel rounded-3xl shadow-xl flex flex-col justify-between overflow-hidden min-h-[440px]">
                   
                   {/* Header */}
-                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div className="px-6 py-4 border-b border-white/60 dark:border-white/10 flex items-center justify-between bg-white/20 dark:bg-slate-900/30 backdrop-blur-md">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold text-slate-900 dark:text-white">Your draft</span>
-                      <span className="bg-[#e2e8f0] dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                      <span className="glass-pill text-slate-700 dark:text-slate-300 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                         {wordCount} words
                       </span>
                     </div>
@@ -1075,7 +1067,7 @@ export default function App() {
                   </div>
 
                   {/* Body Textarea */}
-                  <div className="p-6 flex-1 flex flex-col relative bg-white dark:bg-slate-900">
+                  <div className="p-6 flex-1 flex flex-col relative bg-transparent">
                     {isProcessing && <div className="ai-scanline" />}
                     <textarea
                       value={inputText}
@@ -1087,11 +1079,11 @@ export default function App() {
                   </div>
 
                   {/* Footer Bar */}
-                  <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900">
+                  <div className="px-6 py-4 border-t border-white/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-3 bg-white/30 dark:bg-slate-900/40 backdrop-blur-md">
                     <button
                       onClick={handleCheckDetectors}
                       disabled={isCheckingDetectors || !inputText.trim()}
-                      className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 font-medium text-xs px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="glass-button-secondary font-medium text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       {isCheckingDetectors ? (
                         <>
@@ -1106,7 +1098,7 @@ export default function App() {
                     <button
                       onClick={() => handleHumanize()}
                       disabled={isProcessing || !inputText.trim()}
-                      className="bg-[#0f4c5c] hover:bg-[#0d5c58] dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-xs active:scale-95 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="glass-button font-bold text-xs px-5 py-2.5 rounded-xl shadow-md active:scale-95 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       {isProcessing ? (
                         <>
@@ -1121,13 +1113,13 @@ export default function App() {
                 </div>
 
                 {/* RIGHT CARD: Humanized */}
-                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs flex flex-col justify-between overflow-hidden min-h-[440px] transition-colors">
+                <div className="glass-panel rounded-3xl shadow-xl flex flex-col justify-between overflow-hidden min-h-[440px]">
                   
                   {/* Header */}
-                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div className="px-6 py-4 border-b border-white/60 dark:border-white/10 flex items-center justify-between bg-white/20 dark:bg-slate-900/30 backdrop-blur-md">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-bold text-slate-900 dark:text-white">Humanized</span>
-                      <span className="bg-[#d1fae5] dark:bg-emerald-950/60 text-[#065f46] dark:text-emerald-300 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                      <span className="glass-pill bg-emerald-500/15 text-[#065f46] dark:text-emerald-300 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-emerald-500/30">
                         {isProcessing ? 'Processing...' : 'Ready'}
                       </span>
                     </div>
@@ -1140,8 +1132,8 @@ export default function App() {
                         }}
                         className={`px-3.5 py-1 rounded-full text-xs font-semibold transition cursor-pointer border ${
                           viewMode === 'clean'
-                            ? 'bg-[#0f4c5c] dark:bg-teal-600 text-white border-[#0f4c5c] dark:border-teal-600 shadow-2xs'
-                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'
+                            ? 'bg-[#0f4c5c] dark:bg-teal-600 text-white border-transparent shadow-xs'
+                            : 'glass-button-secondary'
                         }`}
                       >
                         Clean
@@ -1153,8 +1145,8 @@ export default function App() {
                         }}
                         className={`px-3.5 py-1 rounded-full text-xs font-semibold transition cursor-pointer border ${
                           viewMode === 'xray'
-                            ? 'bg-[#0f4c5c] dark:bg-teal-600 text-white border-[#0f4c5c] dark:border-teal-600 shadow-2xs'
-                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'
+                            ? 'bg-[#0f4c5c] dark:bg-teal-600 text-white border-transparent shadow-xs'
+                            : 'glass-button-secondary'
                         }`}
                       >
                         X-Ray
@@ -1162,7 +1154,7 @@ export default function App() {
                       <button
                         onClick={handleCopy}
                         disabled={!outputText}
-                        className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium px-3 py-1 rounded-full shadow-2xs transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        className="glass-button-secondary text-xs font-medium px-3 py-1 rounded-full transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
                       >
                         <Copy className="w-3 h-3 text-slate-400" />
                         <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -1171,14 +1163,14 @@ export default function App() {
                   </div>
 
                   {/* Body Text */}
-                  <div className="p-6 flex-1 flex flex-col overflow-y-auto bg-white dark:bg-slate-900">
+                  <div className="p-6 flex-1 flex flex-col overflow-y-auto bg-transparent">
                     {outputText ? (
                       viewMode === 'xray' ? (
                         renderXRayDiff()
                       ) : (
                         <>
                           {/* Status Alert Banner */}
-                          <div className="bg-[#e6f4ea] dark:bg-emerald-950/40 text-[#137333] dark:text-emerald-300 border border-[#ceead6] dark:border-emerald-900/60 text-xs font-medium px-4 py-2.5 rounded-xl mb-4 leading-relaxed">
+                          <div className="glass-pill bg-emerald-500/10 text-[#137333] dark:text-emerald-300 border border-emerald-500/30 text-xs font-medium px-4 py-2.5 rounded-xl mb-4 leading-relaxed">
                             X-Ray: tightened to {activeStrategy.title} rhythm; facts and terms kept.
                           </div>
 
@@ -1198,7 +1190,7 @@ export default function App() {
                   </div>
 
                   {/* Footer */}
-                  <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 text-xs">
+                  <div className="px-6 py-4 border-t border-white/60 dark:border-white/10 flex items-center justify-between bg-white/30 dark:bg-slate-900/40 backdrop-blur-md text-xs">
                     <span className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Key terms preserved</span>
@@ -1233,7 +1225,7 @@ export default function App() {
 
               {/* DETECTOR SCAN RESULTS POPUP (WHEN SCANNED) */}
               {detectorData && (
-                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-4">
+                <div className="glass-panel rounded-3xl p-6 shadow-xl space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -1253,16 +1245,16 @@ export default function App() {
 
                   {/* Sentence Heatmap Preview */}
                   {detectorData.sentence_heatmap && (
-                    <div className="space-y-2 pt-2 border-t border-slate-100">
-                      <div className="text-xs font-semibold text-slate-700">Sentence &amp; Bullet Breakdown:</div>
+                    <div className="space-y-2 pt-2 border-t border-white/60 dark:border-white/10">
+                      <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">Sentence &amp; Bullet Breakdown:</div>
                       <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                         {detectorData.sentence_heatmap.map((item, i) => (
                           <div 
                             key={i} 
-                            className={`p-2 rounded-xl text-xs flex items-start justify-between gap-3 ${
-                              item.color === 'red' ? 'bg-red-50 text-red-900 border border-red-100' :
-                              item.color === 'amber' ? 'bg-amber-50 text-amber-900 border border-amber-100' :
-                              'bg-green-50 text-green-900 border border-green-100'
+                            className={`p-2.5 rounded-xl text-xs flex items-start justify-between gap-3 ${
+                              item.color === 'red' ? 'glass-card-rose text-rose-900 dark:text-rose-200' :
+                              item.color === 'amber' ? 'glass-card-amber text-amber-900 dark:text-amber-200' :
+                              'glass-card-emerald text-emerald-900 dark:text-emerald-200'
                             }`}
                           >
                             <span className="font-mono">{item.sentence}</span>
@@ -1301,7 +1293,7 @@ export default function App() {
           {activeTab === 'templates' && (
             <div key="tab-templates" className="animate-section-enter space-y-6">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">Templates &amp; Presets</h2>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Templates &amp; Presets</h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Pre-tested prompts, bullet points, emails, and technical documentation.</p>
               </div>
 
@@ -1309,11 +1301,11 @@ export default function App() {
                 {TEMPLATES_DATA.map(tpl => (
                   <div 
                     key={tpl.id}
-                    className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs hover:border-slate-300 dark:hover:border-slate-700 transition flex flex-col justify-between"
+                    className="glass-card p-5 rounded-2xl shadow-sm flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full glass-pill text-slate-700 dark:text-slate-300">
                           {tpl.category}
                         </span>
                         <span className="text-xs text-slate-400 font-medium capitalize">{tpl.tone}</span>
@@ -1330,7 +1322,7 @@ export default function App() {
                         setActiveTab('humanize');
                         showToast(`Loaded template: ${tpl.title}`);
                       }}
-                      className="mt-4 w-full py-2 bg-slate-50 hover:bg-[#0f5c56] dark:bg-slate-800 dark:hover:bg-teal-600 hover:text-white text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer"
+                      className="mt-4 w-full py-2.5 glass-button-secondary hover:text-white dark:hover:text-white rounded-xl text-xs font-semibold transition cursor-pointer"
                     >
                       Use this template →
                     </button>
@@ -1365,7 +1357,7 @@ export default function App() {
                 {historyList.map(item => (
                   <div 
                     key={item.id} 
-                    className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-3 transition-colors"
+                    className="glass-panel p-5 rounded-2xl shadow-sm space-y-3 transition-colors"
                   >
                     <div className="flex items-center justify-between text-xs text-slate-400">
                       <div className="flex items-center gap-2">
@@ -1377,11 +1369,11 @@ export default function App() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-700/60">
+                      <div className="p-3.5 rounded-xl glass-panel-subtle text-slate-600 dark:text-slate-300">
                         <div className="font-semibold text-slate-500 dark:text-slate-400 mb-1 uppercase text-[10px]">Input Draft:</div>
                         <p className="line-clamp-3 leading-relaxed">{item.input}</p>
                       </div>
-                      <div className="p-3 rounded-xl bg-teal-50/50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 border border-teal-100/70 dark:border-teal-900/60">
+                      <div className="p-3.5 rounded-xl glass-pill bg-teal-500/10 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 border-teal-500/30">
                         <div className="font-semibold text-teal-700 dark:text-teal-300 mb-1 uppercase text-[10px]">Humanized Result:</div>
                         <p className="line-clamp-3 leading-relaxed">{item.output}</p>
                       </div>
@@ -1392,10 +1384,10 @@ export default function App() {
                         onClick={() => {
                           setInputText(item.input);
                           setOutputText(item.output);
-                          setActiveTab('home');
+                          setActiveTab('humanize');
                           showToast('Restored revision to editor');
                         }}
-                        className="px-3 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition cursor-pointer"
+                        className="glass-button-secondary px-3 py-1 text-xs font-semibold rounded-lg transition cursor-pointer"
                       >
                         Restore to editor
                       </button>
@@ -1404,7 +1396,7 @@ export default function App() {
                           navigator.clipboard.writeText(item.output);
                           showToast('Copied to clipboard');
                         }}
-                        className="px-3 py-1 bg-[#0f5c56] dark:bg-teal-600 text-white text-xs font-semibold rounded-lg transition hover:bg-[#0d5c58] dark:hover:bg-teal-500 cursor-pointer"
+                        className="glass-button px-3.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer"
                       >
                         Copy output
                       </button>
@@ -1422,26 +1414,26 @@ export default function App() {
             <div key="tab-settings" className="animate-section-enter max-w-2xl space-y-6">
               
               {/* Account Card */}
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-4 transition-colors">
+              <div className="glass-panel p-6 rounded-3xl shadow-xl space-y-4 transition-colors">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-lg font-bold text-slate-900 dark:text-white">Account &amp; Security</h2>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Manage your authenticated session and device persistence.</p>
                   </div>
                   {currentUser ? (
-                    <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-full text-xs font-bold flex items-center gap-1.5">
+                    <span className="px-3 py-1 glass-pill bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 rounded-full text-xs font-bold flex items-center gap-1.5">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                       <span>Active Session</span>
                     </span>
                   ) : (
-                    <span className="px-3 py-1 bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 rounded-full text-xs font-bold">
+                    <span className="px-3 py-1 glass-pill bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 rounded-full text-xs font-bold">
                       Guest Mode
                     </span>
                   )}
                 </div>
 
                 {currentUser ? (
-                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex items-center justify-between flex-wrap gap-4">
+                  <div className="p-4 rounded-2xl glass-panel-subtle flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-3">
                       <img
                         src={currentUser.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(currentUser.name || currentUser.email)}`}
@@ -1456,7 +1448,7 @@ export default function App() {
                           {currentUser.email}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full glass-pill text-teal-800 dark:text-teal-300">
                             {currentUser.provider === 'google' ? 'Google Authenticated' : 'Email OTP Verified'}
                           </span>
                           <span className="text-[10px] text-slate-400">Device Saved • Never asks again</span>
@@ -1467,7 +1459,7 @@ export default function App() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={handleLogout}
-                        className="px-4 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 font-bold rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5"
+                        className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 font-bold rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5"
                       >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Sign Out</span>
@@ -1475,7 +1467,7 @@ export default function App() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 flex items-center justify-between flex-wrap gap-4">
+                  <div className="p-4 rounded-2xl glass-panel-subtle flex items-center justify-between flex-wrap gap-4">
                     <div>
                       <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Not currently signed in</p>
                       <p className="text-[11px] text-slate-400 mt-0.5">Sign in with your email to unlock unlimited bypass.</p>
@@ -1485,7 +1477,7 @@ export default function App() {
                         setAuthModalMode('login');
                         setIsAuthModalOpen(true);
                       }}
-                      className="px-5 py-2 bg-[#0f4c5c] hover:bg-[#0c3e4b] dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-xs"
+                      className="glass-button px-5 py-2 text-white font-bold rounded-xl text-xs transition cursor-pointer shadow-sm"
                     >
                       Sign In / Sign Up
                     </button>
@@ -1494,7 +1486,7 @@ export default function App() {
               </div>
 
               {/* Appearance / Theme Selector Card */}
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-4 transition-colors">
+              <div className="glass-panel p-6 rounded-3xl shadow-xl space-y-4 transition-colors">
                 <div>
                   <h2 className="text-lg font-bold text-slate-900 dark:text-white">Appearance &amp; Theme</h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Customize light or dark mode styling for the entire dashboard.</p>
@@ -1505,13 +1497,13 @@ export default function App() {
                     onClick={() => {
                       if (theme !== 'light') toggleTheme();
                     }}
-                    className={`p-4 rounded-xl border-2 transition cursor-pointer flex items-center gap-3 ${
+                    className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-center gap-3 ${
                       theme === 'light'
-                        ? 'border-teal-600 bg-teal-50/30 dark:bg-teal-950/20 shadow-xs'
-                        : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-slate-300'
+                        ? 'border-teal-600 bg-teal-50/40 dark:bg-teal-950/30 shadow-xs'
+                        : 'glass-panel-subtle hover:border-slate-300 dark:hover:border-slate-600'
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-amber-100/80 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-300/40">
                       <Sun className="w-5 h-5" />
                     </div>
                     <div>
@@ -1527,10 +1519,10 @@ export default function App() {
                     onClick={() => {
                       if (theme !== 'dark') toggleTheme();
                     }}
-                    className={`p-4 rounded-xl border-2 transition cursor-pointer flex items-center gap-3 ${
+                    className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-center gap-3 ${
                       theme === 'dark'
                         ? 'border-teal-500 bg-teal-950/20 shadow-xs'
-                        : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 hover:border-slate-300'
+                        : 'glass-panel-subtle hover:border-slate-300 dark:hover:border-slate-600'
                     }`}
                   >
                     <div className="w-10 h-10 rounded-xl bg-indigo-950 text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-800/50">
@@ -1548,7 +1540,7 @@ export default function App() {
               </div>
 
               {/* Gemini Engine Settings */}
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-4 transition-colors">
+              <div className="glass-panel p-6 rounded-3xl shadow-xl space-y-4 transition-colors">
                 <div>
                   <h2 className="text-lg font-bold text-slate-900 dark:text-white">Engine Settings</h2>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Configure your Gemini API Key and model preferences.</p>
@@ -1562,7 +1554,7 @@ export default function App() {
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
                       placeholder="Enter your Gemini API key..."
-                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none focus:border-teal-600 font-mono"
+                      className="w-full p-2.5 rounded-xl glass-input text-slate-800 dark:text-slate-100 outline-none font-mono"
                     />
                     <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
                       Default active key is preloaded. All models (ChatGPT, Claude, Gemini, Llama, DeepSeek) are supported.
@@ -1571,16 +1563,16 @@ export default function App() {
 
                   <div>
                     <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">Primary Detection Engine</label>
-                    <select className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 outline-none bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium">
-                      <option>Google Gemini 3.8 Flash (Active 100% Forensic Engine)</option>
-                      <option>Local Offline Rule Transformer (Zero Latency)</option>
+                    <select className="w-full p-2.5 rounded-xl glass-input outline-none text-slate-800 dark:text-slate-200 font-medium">
+                      <option className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Google Gemini 3.8 Flash (Active 100% Forensic Engine)</option>
+                      <option className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Local Offline Rule Transformer (Zero Latency)</option>
                     </select>
                   </div>
 
                   <div className="pt-2">
                     <button
                       onClick={() => showToast('Settings saved successfully')}
-                      className="px-5 py-2.5 bg-[#0f5c56] hover:bg-[#0d5c58] dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-bold rounded-xl transition cursor-pointer shadow-xs"
+                      className="glass-button px-6 py-2.5 font-bold rounded-xl text-xs transition cursor-pointer shadow-md"
                     >
                       Save Changes
                     </button>
@@ -1596,8 +1588,8 @@ export default function App() {
 
       {/* Floating Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2.5 rounded-xl text-xs font-semibold shadow-xl border border-slate-800 dark:border-slate-200 z-50 flex items-center gap-2 animate-bounce">
-          <span>✓</span>
+        <div className="fixed bottom-6 right-6 glass-panel text-slate-900 dark:text-white px-4 py-2.5 rounded-2xl text-xs font-bold shadow-2xl border border-teal-500/50 z-50 flex items-center gap-2 animate-bounce">
+          <span className="text-teal-600 dark:text-teal-400">✓</span>
           <span>{toastMsg}</span>
         </div>
       )}

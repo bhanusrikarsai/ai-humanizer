@@ -20,20 +20,20 @@ export default function SettingsModal({
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.75)',
-      backdropFilter: 'blur(8px)',
+      backgroundColor: 'rgba(0, 0, 0, 0.65)',
+      backdropFilter: 'blur(20px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 1000,
       padding: '20px'
     }}>
-      <div className="glass-panel" style={{
+      <div className="glass-modal rounded-3xl" style={{
         width: '100%',
         maxWidth: '520px',
-        padding: '24px',
+        padding: '28px',
         position: 'relative',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.6)'
+        boxShadow: '0 30px 80px rgba(0,0,0,0.7)'
       }}>
         
         {/* Header */}

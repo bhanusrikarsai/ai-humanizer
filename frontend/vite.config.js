@@ -4,6 +4,7 @@ import { defineConfig } from 'vite'
 // Cloudflare Workers Free Tier Optimized Build (<1MB constraint)
 export default defineConfig({
   plugins: [react()],
+  envDir: '../',
   server: {
     port: 5173,
     proxy: {

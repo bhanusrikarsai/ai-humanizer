@@ -40,6 +40,9 @@ export default function AuthModal({
   // Google Authentication States
   const [googleLoading, setGoogleLoading] = useState(false);
   const [rememberedAccounts, setRememberedAccounts] = useState([]);
+  const [showFirebaseConfig, setShowFirebaseConfig] = useState(false);
+  const [firebaseConfigured, setFirebaseConfigured] = useState(hasFirebaseConfig());
+  const [rawFirebaseConfigInput, setRawFirebaseConfigInput] = useState('');
   const otpInputRefs = useRef([]);
 
   // Load remembered accounts from device localStorage and server
@@ -170,6 +173,8 @@ export default function AuthModal({
         }
       } catch (err) {
         console.warn('Firebase popup notice:', err);
+        setErrorMsg(err.message || 'Google Sign-In failed');
+        return;
       } finally {
         setGoogleLoading(false);
       }
@@ -213,7 +218,6 @@ export default function AuthModal({
       }
 
       const data = await res.json();
-      setShowGoogleChooser(false);
       finishLogin(data.user);
     } catch (e) {
       setErrorMsg(e.message || 'Google account sign-in error');
@@ -267,7 +271,7 @@ export default function AuthModal({
 
       // Immediately launch the real Google popup window
       setTimeout(() => {
-        handleFirebaseGoogleLogin();
+        handleGoogleClick();
       }, 200);
     } catch (err) {
       setErrorMsg(err.message || 'Could not parse Firebase configuration format.');
@@ -568,23 +572,23 @@ export default function AuthModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-scale-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xl animate-scale-in">
       
       {/* Modal Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative transition-colors duration-200">
+      <div className="glass-modal rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative border border-white/30 dark:border-white/15 transition-colors duration-200">
         
         {/* Close button if user already logged in and just viewing */}
         {canClose && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition z-10 cursor-pointer"
+            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-full glass-panel-subtle hover:bg-white/20 transition z-10 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         )}
 
             {/* Top Header Banner */}
-            <div className="p-6 pb-4 border-b border-slate-100 dark:border-slate-800/80 bg-gradient-to-r from-teal-500/10 via-emerald-500/5 to-cyan-500/10">
+            <div className="p-6 pb-4 border-b border-white/10 dark:border-white/5 bg-gradient-to-r from-teal-500/15 via-emerald-500/10 to-cyan-500/15">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-11 h-11 rounded-2xl glass-badge-brain flex items-center justify-center p-1.5 shrink-0 shadow-lg shadow-teal-500/20 bg-slate-900 border border-teal-500/30 overflow-hidden group">
                   <img src={brainLogo} alt="AI Humanizer Logo" className="w-full h-full object-contain filter brightness-110 drop-shadow-sm group-hover:scale-105 transition-transform duration-300" />
@@ -600,7 +604,7 @@ export default function AuthModal({
               </div>
 
               {/* Tab Selector: Sign Up & Log In */}
-              <div className="flex p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl mt-4">
+              <div className="flex p-1 glass-panel-subtle rounded-xl mt-4">
                 <button
                   type="button"
                   onClick={() => {
@@ -610,7 +614,7 @@ export default function AuthModal({
                   }}
                   className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                     mode === 'signup'
-                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                      ? 'bg-white/90 dark:bg-slate-800/90 text-slate-900 dark:text-white shadow-xs border border-white/20'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
                   }`}
                 >
@@ -625,7 +629,7 @@ export default function AuthModal({
                   }}
                   className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     mode === 'login'
-                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                      ? 'bg-white/90 dark:bg-slate-800/90 text-slate-900 dark:text-white shadow-xs border border-white/20'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
                   }`}
                 >
@@ -644,7 +648,7 @@ export default function AuthModal({
               
               {/* Error Message */}
               {errorMsg && (
-                <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 rounded-xl flex items-start gap-2.5 text-xs text-red-700 dark:text-red-300">
+                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-2.5 text-xs text-red-700 dark:text-red-300">
                   <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
                   <div className="flex-1">{errorMsg}</div>
                 </div>
@@ -656,7 +660,7 @@ export default function AuthModal({
                   <form onSubmit={handleSendOtp} className="space-y-3">
                     {/* Quick switch banner if accounts are already saved on this device */}
                     {rememberedAccounts.length > 0 && (
-                      <div className="p-2.5 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-900/60 rounded-xl flex items-center justify-between gap-2">
+                      <div className="p-2.5 glass-panel-subtle bg-teal-500/10 border-teal-500/30 rounded-xl flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                           <div className="text-[11px] text-teal-900 dark:text-teal-200 truncate">
@@ -669,7 +673,7 @@ export default function AuthModal({
                             setMode('login');
                             setErrorMsg(null);
                           }}
-                          className="px-2 py-0.5 text-[10px] font-bold bg-[#0f4c5c] hover:bg-[#0c3e4b] dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-lg shrink-0 cursor-pointer"
+                          className="px-2 py-0.5 text-[10px] font-bold glass-button text-white rounded-lg shrink-0 cursor-pointer"
                         >
                           Log In →
                         </button>
@@ -687,7 +691,7 @@ export default function AuthModal({
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           placeholder="e.g. Alex Morgan"
-                          className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 rounded-xl text-slate-800 dark:text-slate-100 outline-none focus:border-teal-500 transition"
+                          className="w-full pl-10 pr-4 py-2.5 text-xs glass-input rounded-xl text-slate-800 dark:text-slate-100 outline-none transition"
                         />
                       </div>
                     </div>
@@ -704,7 +708,7 @@ export default function AuthModal({
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="name@example.com"
                           required
-                          className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 rounded-xl text-slate-800 dark:text-slate-100 outline-none focus:border-teal-500 transition"
+                          className="w-full pl-10 pr-4 py-2.5 text-xs glass-input rounded-xl text-slate-800 dark:text-slate-100 outline-none transition"
                         />
                       </div>
                       <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
@@ -729,7 +733,7 @@ export default function AuthModal({
                     <button
                       type="submit"
                       disabled={otpLoading || !email.trim()}
-                      className="w-full py-2.5 bg-[#0f4c5c] hover:bg-[#0c3e4b] dark:bg-teal-600 dark:hover:bg-teal-500 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      className="w-full py-2.5 glass-button text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       {otpLoading ? (
                         <>
@@ -761,7 +765,7 @@ export default function AuthModal({
                   /* OTP VERIFICATION STEP */
                   <div className="space-y-4">
                     <div className="text-center space-y-1">
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-900/60 rounded-full text-xs font-semibold text-teal-800 dark:text-teal-300">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 glass-pill bg-teal-500/20 text-teal-800 dark:text-teal-200 border-teal-500/30 text-xs font-semibold">
                         <Mail className="w-3.5 h-3.5" />
                         <span>OTP sent to {email}</span>
                       </div>
@@ -782,13 +786,13 @@ export default function AuthModal({
                           value={digit}
                           onChange={(e) => handleDigitChange(idx, e.target.value)}
                           onKeyDown={(e) => handleDigitKeyDown(idx, e)}
-                          className="w-12 h-14 text-center font-mono text-xl font-extrabold bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white outline-none focus:border-teal-500 dark:focus:border-teal-400 focus:bg-white dark:focus:bg-slate-900 focus:shadow-md transition"
+                          className="w-12 h-14 text-center font-mono text-xl font-extrabold glass-input rounded-xl text-slate-900 dark:text-white outline-none shadow-md transition"
                         />
                       ))}
                     </div>
 
                     {/* Real Email Inbox Notice (No OTP displayed on screen) */}
-                    <div className="p-3 bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/60 rounded-xl text-center text-xs text-teal-800 dark:text-teal-300">
+                    <div className="p-3 glass-panel-subtle bg-teal-500/10 border-teal-500/30 rounded-xl text-center text-xs text-teal-800 dark:text-teal-300">
                       <span>We sent a 6-digit security code to <strong>{email}</strong>. Please check your inbox (and Spam folder) to enter the code.</span>
                     </div>
 
@@ -797,7 +801,7 @@ export default function AuthModal({
                       type="button"
                       onClick={() => triggerVerification()}
                       disabled={verifyLoading || otpDigits.join('').length !== 6}
-                      className="w-full py-2.5 bg-gradient-to-r from-[#0f4c5c] to-emerald-600 hover:from-[#0d404f] hover:to-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      className="w-full py-2.5 glass-button text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       {verifyLoading ? (
                         <>
@@ -807,7 +811,7 @@ export default function AuthModal({
                       ) : (
                         <>
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>Verify OTP & Permanently Create Account</span>
+                          <span>Verify OTP &amp; Permanently Create Account</span>
                         </>
                       )}
                     </button>
@@ -862,7 +866,7 @@ export default function AuthModal({
                           <div
                             key={idx}
                             onClick={() => handleRememberedLogin(acc.email, acc.name)}
-                            className="w-full p-3 bg-gradient-to-r from-teal-50/90 via-slate-50 to-emerald-50/70 dark:from-slate-800 dark:via-slate-800/90 dark:to-teal-950/40 hover:from-teal-100 hover:to-emerald-100 dark:hover:from-slate-750 dark:hover:to-teal-900/50 border border-teal-200/90 dark:border-teal-800/70 hover:border-teal-400 dark:hover:border-teal-500 rounded-2xl flex items-center gap-3 transition-all cursor-pointer group shadow-2xs text-left"
+                            className="w-full p-3 glass-card rounded-2xl flex items-center gap-3 transition-all cursor-pointer group text-left"
                           >
                             <div className="relative shrink-0">
                               <img
@@ -876,7 +880,7 @@ export default function AuthModal({
                             <div className="flex-1 min-w-0">
                               <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-teal-600 dark:group-hover:text-teal-400 transition truncate flex items-center gap-1.5">
                                 <span>{acc.name || acc.email.split('@')[0]}</span>
-                                <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 px-1.5 py-0.2 rounded-full border border-emerald-300 dark:border-emerald-800">
+                                <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 glass-pill bg-emerald-500/20 border-emerald-500/30 px-1.5 py-0.2 rounded-full">
                                   Saved
                                 </span>
                               </div>
@@ -896,7 +900,7 @@ export default function AuthModal({
                                   e.stopPropagation();
                                   handleRememberedLogin(acc.email, acc.name);
                                 }}
-                                className="px-3 py-1.5 bg-[#0f4c5c] hover:bg-[#0c3e4b] dark:bg-teal-600 dark:hover:bg-teal-500 text-white rounded-xl text-[11px] font-bold shadow-2xs group-hover:scale-105 transition-transform flex items-center gap-1 cursor-pointer"
+                                className="px-3 py-1.5 glass-button text-white rounded-xl text-[11px] font-bold shadow-2xs group-hover:scale-105 transition-transform flex items-center gap-1 cursor-pointer"
                               >
                                 <span>Log In</span>
                                 <ArrowRight className="w-3 h-3" />
@@ -905,7 +909,7 @@ export default function AuthModal({
                                 type="button"
                                 title="Remove account from device"
                                 onClick={(e) => handleRemoveSingleAccount(acc.email, e)}
-                                className="p-1.5 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg transition hover:bg-slate-100 dark:hover:bg-slate-700/60 cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg glass-panel-subtle transition cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -915,13 +919,13 @@ export default function AuthModal({
                       </div>
 
                       <div className="relative flex py-1 items-center">
-                        <div className="flex-grow border-t border-slate-200 dark:border-slate-800" />
+                        <div className="flex-grow border-t border-slate-200/50 dark:border-white/10" />
                         <span className="flex-shrink mx-3 text-[10px] uppercase font-bold text-slate-400 tracking-wider">or log in with another email</span>
-                        <div className="flex-grow border-t border-slate-200 dark:border-slate-800" />
+                        <div className="flex-grow border-t border-slate-200/50 dark:border-white/10" />
                       </div>
                     </div>
                   ) : (
-                    <div className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/70 rounded-xl text-center space-y-1">
+                    <div className="p-3 glass-panel-subtle rounded-xl text-center space-y-1">
                       <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                         No saved accounts on this device yet
                       </p>
@@ -951,7 +955,7 @@ export default function AuthModal({
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="name@example.com"
                           required
-                          className="w-full pl-10 pr-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 rounded-xl text-slate-800 dark:text-slate-100 outline-none focus:border-teal-500 transition"
+                          className="w-full pl-10 pr-4 py-2.5 text-xs glass-input rounded-xl text-slate-800 dark:text-slate-100 outline-none transition"
                         />
                       </div>
                     </div>
@@ -959,7 +963,7 @@ export default function AuthModal({
                     <button
                       type="submit"
                       disabled={verifyLoading || !email.trim()}
-                      className="w-full py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      className="w-full py-2.5 glass-button text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       {verifyLoading ? (
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -990,7 +994,7 @@ export default function AuthModal({
 
 
         {/* Modal Footer Note */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400 text-center flex flex-col items-center justify-center gap-1.5">
+        <div className="p-4 glass-panel-subtle border-t border-white/10 dark:border-white/5 text-[11px] text-slate-500 dark:text-slate-400 text-center flex flex-col items-center justify-center gap-1.5">
           <div className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
             <ShieldCheck className="w-3.5 h-3.5 text-teal-500" />
             <span>Permanent Session Active • Stays Signed In Forever on this device</span>

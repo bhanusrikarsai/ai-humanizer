@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import {
-  ShieldAlert, Sparkles, Zap, CheckCircle2, Copy, ArrowRight,
-  RefreshCw, Clock, AlertTriangle, Eye, Check, FileText
+  ShieldAlert, Zap, CheckCircle2, Copy, ArrowRight,
+  RefreshCw, AlertTriangle, Check, FileText
 } from 'lucide-react';
 
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
@@ -56,21 +56,7 @@ export default function AbsoluteDetectorView({
 
   const timerRef = useRef(null);
 
-  useEffect(() => {
-    if (initialText && initialText.trim()) {
-      setDetectorInput(initialText);
-      handleScan(initialText);
-    }
-  }, [initialText]);
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
-
-  const startTimer = (initialStage = 'Analyzing text...') => {
+  const startTimer = useCallback((initialStage = 'Analyzing text...') => {
     setElapsedTime(0);
     setScanStage(initialStage);
     const start = Date.now();
@@ -79,19 +65,17 @@ export default function AbsoluteDetectorView({
       const now = Date.now();
       setElapsedTime(Number(((now - start) / 1000).toFixed(1)));
     }, 100);
-  };
+  }, []);
 
-  const stopTimer = () => {
+  const stopTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-  };
-
-  const wordCount = detectorInput.trim() ? detectorInput.trim().split(/\s+/).length : 0;
+  }, []);
 
   // 1. Scan Only (< 3s)
-  const handleScan = async (textToScan = detectorInput) => {
+  const handleScan = useCallback(async (textToScan = detectorInput) => {
     const text = textToScan.trim();
     if (!text) {
       if (onToast) onToast('Please enter text to detect');
@@ -133,7 +117,23 @@ export default function AbsoluteDetectorView({
       stopTimer();
       setIsScanning(false);
     }
-  };
+  }, [detectorInput, onToast, startTimer, stopTimer]);
+
+  useEffect(() => {
+    if (initialText && initialText.trim()) {
+      setDetectorInput(initialText);
+      handleScan(initialText);
+    }
+  }, [initialText, handleScan]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  const wordCount = detectorInput.trim() ? detectorInput.trim().split(/\s+/).length : 0;
 
   // 2. DETECT & CHANGE IN 1-CLICK (< 10s Guaranteed)
   const handleDetectAndChange = async (textToProcess = detectorInput) => {
@@ -330,13 +330,6 @@ export default function AbsoluteDetectorView({
 
   // Sentences filtering
   const sentences = detectorResult?.sentence_heatmap || [];
-  const filteredSentences = sentences.filter(s => {
-    if (activeFilter === 'ai') return s.color === 'red';
-    if (activeFilter === 'mixed') return s.color === 'amber';
-    if (activeFilter === 'human') return s.color === 'green';
-    return true;
-  });
-
   const selectedSentence = sentences.find(s => s.index === selectedSentenceIndex) || sentences[0] || null;
 
   // Master verdict score
@@ -348,16 +341,16 @@ export default function AbsoluteDetectorView({
   const isLowAi = aiScore < 40;
 
   const verdictBg = isHighAi 
-    ? 'bg-rose-50/90 border-rose-200/90 text-rose-950' 
+    ? 'glass-card-rose text-rose-950 dark:text-rose-100' 
     : isModerateAi 
-    ? 'bg-amber-50/90 border-amber-200/90 text-amber-950' 
-    : 'bg-emerald-50/90 border-emerald-200/90 text-emerald-950';
+    ? 'glass-card-amber text-amber-950 dark:text-amber-100' 
+    : 'glass-card-emerald text-emerald-950 dark:text-emerald-100';
 
   const verdictBadgeColor = isHighAi 
-    ? 'bg-rose-600 text-white' 
+    ? 'bg-rose-600 text-white shadow-md shadow-rose-500/20' 
     : isModerateAi 
-    ? 'bg-amber-600 text-white' 
-    : 'bg-emerald-600 text-white';
+    ? 'bg-amber-600 text-white shadow-md shadow-amber-500/20' 
+    : 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20';
 
   const breakdown = detectorResult?.forensic_breakdown;
   const matrix = detectorResult?.detector_matrix?.detectors || {};
@@ -368,7 +361,7 @@ export default function AbsoluteDetectorView({
       {/* ======================================================== */}
       {/* 1. DETECTOR HERO & INPUT CONTAINER                      */}
       {/* ======================================================== */}
-      <div className="bg-white/95 backdrop-blur-lg rounded-3xl p-6 md:p-8 border border-slate-200/90 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+      <div className="glass-panel rounded-3xl p-6 md:p-8 shadow-xl">
         
         {/* Header Row */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -379,14 +372,14 @@ export default function AbsoluteDetectorView({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+                  <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                     Absolute 100% AI Content Detector &amp; Transformer
                   </h1>
-                  <span className="px-2.5 py-0.5 text-[10px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200/90 rounded-full uppercase tracking-wider">
+                  <span className="px-2.5 py-0.5 text-[10px] font-extrabold glass-pill bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-400/30 rounded-full uppercase tracking-wider">
                     All AI Models
                   </span>
                 </div>
-                <p className="text-xs md:text-sm text-slate-500 mt-0.5">
+                <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                   Universal multi-signal detection across ChatGPT (GPT-4o), Claude 3.5, Google Gemini, and DeepSeek — with 1-click auto-humanization in under 10 seconds.
                 </p>
               </div>
@@ -400,7 +393,7 @@ export default function AbsoluteDetectorView({
               <button
                 key={key}
                 onClick={() => handleLoadSample(key)}
-                className="px-3 py-1.5 text-xs font-semibold rounded-full bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200/90 transition cursor-pointer"
+                className="px-3 py-1.5 text-xs font-semibold rounded-full glass-button-secondary transition cursor-pointer"
               >
                 {s.label}
               </button>
@@ -409,10 +402,10 @@ export default function AbsoluteDetectorView({
         </div>
 
         {/* INPUT TEXTAREA BOX */}
-        <div className="bg-slate-50/70 rounded-2xl border border-slate-200/90 p-4 relative overflow-hidden focus-within:border-indigo-400 focus-within:bg-white transition-all shadow-2xs">
+        <div className="glass-input rounded-2xl p-4 relative overflow-hidden transition-all shadow-xs">
           {(isScanning || isChanging) && <div className="ai-scanline" />}
           
-          <div className="flex justify-between items-center mb-2 text-xs text-slate-500 font-medium">
+          <div className="flex justify-between items-center mb-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
             <span>Input text to analyze machine syntax &amp; transform:</span>
             <span>{wordCount} words • {detectorInput.length} characters</span>
           </div>
@@ -422,24 +415,24 @@ export default function AbsoluteDetectorView({
             onChange={(e) => setDetectorInput(e.target.value)}
             placeholder="Paste text from ChatGPT, Claude, Gemini, DeepSeek, or any AI to forensically detect and transform into authentic human writing..."
             rows={5}
-            className={`w-full bg-transparent text-slate-900 placeholder-slate-400 text-sm outline-none resize-none leading-relaxed transition-all ${
+            className={`w-full bg-transparent text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm outline-none resize-none leading-relaxed transition-all ${
               isScanning || isChanging ? 'opacity-70' : ''
             }`}
           />
 
           {/* Action Buttons Row */}
-          <div className="mt-3 pt-3 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-3 pt-3 border-t border-white/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <button
                 onClick={handlePaste}
-                className="px-3.5 py-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 rounded-xl border border-slate-200/90 transition cursor-pointer shadow-2xs flex items-center gap-1.5"
+                className="px-3.5 py-1.5 text-xs font-semibold glass-button-secondary rounded-xl transition cursor-pointer flex items-center gap-1.5"
               >
                 <FileText className="w-3.5 h-3.5 text-slate-500" />
                 <span>Paste</span>
               </button>
               <button
                 onClick={handleClear}
-                className="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 transition cursor-pointer"
+                className="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 dark:hover:text-white transition cursor-pointer"
               >
                 Clear
               </button>
@@ -450,11 +443,11 @@ export default function AbsoluteDetectorView({
               <button
                 onClick={() => handleScan()}
                 disabled={isScanning || isChanging || !detectorInput.trim()}
-                className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs uppercase tracking-wider rounded-xl border border-slate-200/90 transition shadow-2xs disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2.5 glass-button-secondary font-bold text-xs uppercase tracking-wider rounded-xl transition disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
               >
                 {isScanning && !isChanging ? (
                   <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600 dark:text-indigo-400" />
                     <span>Analyzing ({elapsedTime}s)...</span>
                   </>
                 ) : (
@@ -468,7 +461,7 @@ export default function AbsoluteDetectorView({
               <button
                 onClick={() => handleDetectAndChange()}
                 disabled={isScanning || isChanging || !detectorInput.trim()}
-                className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md shadow-indigo-500/25 transition active:scale-95 disabled:opacity-50 flex items-center gap-2 cursor-pointer ai-btn-sheen"
+                className="px-6 py-2.5 glass-button font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-md transition active:scale-95 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
               >
                 {isChanging ? (
                   <>
@@ -488,17 +481,17 @@ export default function AbsoluteDetectorView({
 
         {/* Live Active Progress Bar when running */}
         {(isScanning || isChanging) && (
-          <div className="mt-4 p-4 rounded-2xl bg-indigo-50/80 border border-indigo-200/80 text-indigo-900 ai-fade-in flex flex-col gap-2">
+          <div className="mt-4 p-4 rounded-2xl glass-panel-subtle bg-indigo-500/10 border-indigo-400/30 text-indigo-900 dark:text-indigo-200 ai-fade-in flex flex-col gap-2">
             <div className="flex items-center justify-between text-xs font-bold">
               <span className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span>
                 <span>{scanStage}</span>
               </span>
-              <span className="font-mono text-indigo-700 bg-white px-2.5 py-0.5 rounded-full border border-indigo-200/90">
+              <span className="font-mono text-indigo-700 dark:text-indigo-300 glass-pill px-2.5 py-0.5 rounded-full border-indigo-400/30">
                 ⏱️ {elapsedTime}s (Target: &lt; 10s)
               </span>
             </div>
-            <div className="w-full bg-indigo-200/60 h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-indigo-200/40 dark:bg-indigo-950/40 h-1.5 rounded-full overflow-hidden">
               <div 
                 className="bg-indigo-600 h-full rounded-full transition-all duration-300"
                 style={{ width: `${Math.min(95, (elapsedTime / 8) * 100)}%` }}
@@ -511,12 +504,12 @@ export default function AbsoluteDetectorView({
 
       {/* ERROR ALERT */}
       {errorMsg && (
-        <div className="p-4 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-2xl flex items-center justify-between">
+        <div className="p-4 glass-card-rose text-rose-700 dark:text-rose-300 text-xs font-semibold rounded-2xl flex items-center justify-between">
           <span className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{errorMsg}</span>
           </span>
-          <button onClick={() => setErrorMsg(null)} className="text-xs font-bold text-rose-600 hover:underline">Dismiss</button>
+          <button onClick={() => setErrorMsg(null)} className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer">Dismiss</button>
         </div>
       )}
 
@@ -524,7 +517,7 @@ export default function AbsoluteDetectorView({
       {/* 2. DUAL COMPARISON: BEFORE (AI) VS AFTER (HUMAN)        */}
       {/* ======================================================== */}
       {changedOutput && (
-        <div className="bg-white/95 backdrop-blur-lg rounded-3xl p-6 md:p-8 border-2 border-indigo-500/80 shadow-[0_12px_40px_rgba(99,102,241,0.12)] space-y-5 ai-fade-in ring-4 ring-indigo-500/10">
+        <div className="glass-panel rounded-3xl p-6 md:p-8 border-2 border-indigo-500/60 shadow-2xl space-y-5 ai-fade-in ring-4 ring-indigo-500/10">
           
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
@@ -532,10 +525,10 @@ export default function AbsoluteDetectorView({
                 <span className="relative z-10 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">✓</span>
               </span>
               <div>
-                <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
                   Successfully Detected &amp; Transformed to 100% Human
                 </h2>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Completed in {elapsedTime > 0 ? `${elapsedTime}s` : 'under 6s'} • Machine watermarks removed • Natural human cadence applied
                 </p>
               </div>
@@ -544,7 +537,7 @@ export default function AbsoluteDetectorView({
             <div className="flex items-center gap-2">
               <button
                 onClick={handleCopyChanged}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 glass-button font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
               >
                 {copiedChanged ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copiedChanged ? 'Copied!' : 'Copy Changed Text'}</span>
@@ -553,16 +546,16 @@ export default function AbsoluteDetectorView({
               <button
                 onClick={handleVerifyChanged}
                 disabled={isVerifying}
-                className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs rounded-xl border border-slate-200/90 shadow-2xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 glass-button-secondary font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                {isVerifying ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                {isVerifying ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
                 <span>Verify 0% AI</span>
               </button>
 
               {onTransferToHumanizer && (
                 <button
                   onClick={() => onTransferToHumanizer(changedOutput)}
-                  className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-indigo-600 font-bold text-xs rounded-xl border border-indigo-200/80 transition flex items-center gap-1 cursor-pointer"
+                  className="px-4 py-2 glass-button-secondary text-indigo-600 dark:text-indigo-300 font-bold text-xs rounded-xl transition flex items-center gap-1 cursor-pointer"
                 >
                   <span>Open in Studio</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -573,9 +566,9 @@ export default function AbsoluteDetectorView({
 
           {/* Verification Badge (if verified) */}
           {verificationResult && (
-            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200/90 text-emerald-950 flex items-center justify-between text-xs ai-fade-in">
+            <div className="p-3.5 rounded-2xl glass-pill bg-emerald-500/15 border-emerald-500/30 text-emerald-950 dark:text-emerald-200 flex items-center justify-between text-xs ai-fade-in">
               <span className="font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Verification Confirmed: {verificationResult.verdict || '100% Authentic Human'} (AI Score: {verificationResult.overall_ai_score || 0}%)</span>
               </span>
               <span className="bg-emerald-600 text-white px-2.5 py-0.5 rounded-full font-extrabold text-[10px]">
@@ -588,44 +581,44 @@ export default function AbsoluteDetectorView({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
             {/* Left: Original AI Flagged Text */}
-            <div className="p-5 rounded-2xl bg-rose-50/60 border border-rose-200/80 space-y-3 flex flex-col justify-between">
+            <div className="p-5 rounded-3xl glass-card-rose space-y-3 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-rose-800 flex items-center gap-1.5">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-rose-800 dark:text-rose-300 flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-rose-600"></span>
                     Original Detected Draft
                   </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-900 border border-rose-200">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full glass-pill bg-rose-500/20 text-rose-900 dark:text-rose-200 border-rose-500/30">
                     {detectorResult?.detected_model_family || '100% AI Detected'}
                   </span>
                 </div>
-                <p className="text-xs text-rose-950 leading-relaxed font-sans line-clamp-6 whitespace-pre-wrap">
+                <p className="text-xs text-rose-950 dark:text-rose-200 leading-relaxed font-sans line-clamp-6 whitespace-pre-wrap">
                   {detectorInput}
                 </p>
               </div>
-              <div className="text-[10px] text-rose-700 font-semibold pt-2 border-t border-rose-200/70 flex items-center justify-between">
+              <div className="text-[10px] text-rose-700 dark:text-rose-400 font-semibold pt-2 border-t border-rose-500/20 flex items-center justify-between">
                 <span>AI Probability: {aiScore}%</span>
                 <span>Flagged Clichés: {detectorResult?.identified_cliches?.length || 0}</span>
               </div>
             </div>
 
             {/* Right: Changed Human Authentic Text */}
-            <div className="p-5 rounded-2xl bg-emerald-50/70 border border-emerald-200/90 space-y-3 flex flex-col justify-between">
+            <div className="p-5 rounded-3xl glass-card-emerald space-y-3 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
                     Changed Human Output
                   </span>
-                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-200">
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full glass-pill bg-emerald-500/20 text-emerald-900 dark:text-emerald-200 border-emerald-500/30">
                     100% Natural Authorship
                   </span>
                 </div>
-                <p className="text-xs text-slate-900 leading-relaxed font-sans whitespace-pre-wrap font-medium">
+                <p className="text-xs text-slate-900 dark:text-slate-100 leading-relaxed font-sans whitespace-pre-wrap font-medium">
                   {changedOutput}
                 </p>
               </div>
-              <div className="text-[10px] text-emerald-700 font-semibold pt-2 border-t border-emerald-200/80 flex items-center justify-between">
+              <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold pt-2 border-t border-emerald-500/20 flex items-center justify-between">
                 <span>Natural Human Tone</span>
                 <span>Zero Hallucinations Preserved</span>
               </div>
@@ -642,32 +635,32 @@ export default function AbsoluteDetectorView({
         <div className="space-y-6 ai-fade-in">
 
           {/* MASTER FORENSIC VERDICT CARD */}
-          <div className={`p-6 md:p-8 rounded-3xl border shadow-sm ${verdictBg} transition-all`}>
+          <div className={`p-6 md:p-8 rounded-3xl ${verdictBg} transition-all`}>
             <div className="flex flex-wrap items-start justify-between gap-6">
               <div className="space-y-2 flex-1 min-w-[280px]">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className={`px-3 py-1 text-xs font-black rounded-full uppercase tracking-wider shadow-sm ${verdictBadgeColor}`}>
+                  <span className={`px-3 py-1 text-xs font-black rounded-full uppercase tracking-wider ${verdictBadgeColor}`}>
                     {detectorResult.confidence || '99.8% High Confidence'}
                   </span>
                   
                   {detectorResult.detected_model_family && (
-                    <span className="px-3 py-1 text-xs font-extrabold rounded-full bg-slate-900 text-white shadow-2xs">
+                    <span className="px-3 py-1 text-xs font-extrabold rounded-full glass-panel-subtle bg-slate-900/80 text-white shadow-2xs border border-white/20">
                       🤖 Detected Model: {detectorResult.detected_model_family}
                     </span>
                   )}
                 </div>
 
-                <h3 className="text-2xl md:text-3xl font-black tracking-tight">
+                <h3 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
                   {detectorResult.verdict}
                 </h3>
 
                 {detectorResult.gemini_reasoning ? (
-                  <div className="text-xs md:text-sm text-slate-800 leading-relaxed font-medium bg-white/80 p-3.5 rounded-2xl border border-slate-200/90 shadow-2xs">
-                    <span className="font-bold text-indigo-700 block mb-1">🤖 Stylometric Forensic Diagnostics:</span>
+                  <div className="text-xs md:text-sm text-slate-800 dark:text-slate-200 leading-relaxed font-medium glass-panel-subtle p-3.5 rounded-2xl">
+                    <span className="font-bold text-indigo-700 dark:text-indigo-400 block mb-1">🤖 Stylometric Forensic Diagnostics:</span>
                     {detectorResult.gemini_reasoning}
                   </div>
                 ) : (
-                  <p className="text-xs md:text-sm text-slate-700 leading-relaxed">
+                  <p className="text-xs md:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
                     {isHighAi && (
                       <>🚨 Exhibits unmistakable machine generation: formulaic transitions, low entropy, and classic LLM watermarks.</>
                     )}
@@ -682,37 +675,37 @@ export default function AbsoluteDetectorView({
 
                 {/* Sentence Distribution Chips */}
                 <div className="flex flex-wrap items-center gap-2 pt-2">
-                  <span className="text-xs font-bold text-slate-600 mr-1">Sentence Audit:</span>
-                  <span className="px-2.5 py-1 text-xs font-bold bg-rose-100 text-rose-800 rounded-full border border-rose-200">
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400 mr-1">Sentence Audit:</span>
+                  <span className="px-2.5 py-1 text-xs font-bold glass-pill bg-rose-500/20 text-rose-800 dark:text-rose-200 border-rose-500/30">
                     🔴 {detectorResult.sentences_ai_flagged || 0} AI Sentences
                   </span>
-                  <span className="px-2.5 py-1 text-xs font-bold bg-amber-100 text-amber-800 rounded-full border border-amber-200">
+                  <span className="px-2.5 py-1 text-xs font-bold glass-pill bg-amber-500/20 text-amber-800 dark:text-amber-200 border-amber-500/30">
                     🟡 {detectorResult.sentences_mixed_flagged || 0} Likely AI
                   </span>
-                  <span className="px-2.5 py-1 text-xs font-bold bg-emerald-100 text-emerald-800 rounded-full border border-emerald-200">
+                  <span className="px-2.5 py-1 text-xs font-bold glass-pill bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 border-emerald-500/30">
                     🟢 {detectorResult.sentences_human_count || 0} Human
                   </span>
                 </div>
               </div>
 
               {/* Score Dials and Direct Change Action */}
-              <div className="flex flex-col sm:flex-row items-center gap-4 bg-white/90 p-5 rounded-2xl border border-slate-200/90 shadow-2xs backdrop-blur-sm">
+              <div className="flex flex-col sm:flex-row items-center gap-4 glass-panel p-5 rounded-2xl">
                 <div className="text-center min-w-[90px]">
-                  <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">AI Probability</div>
-                  <div className={`text-3xl font-black ${isHighAi ? 'text-rose-600' : isModerateAi ? 'text-amber-600' : 'text-slate-600'}`}>
+                  <div className="text-[10px] text-slate-400 dark:text-slate-400 uppercase font-bold tracking-wider">AI Probability</div>
+                  <div className={`text-3xl font-black ${isHighAi ? 'text-rose-600 dark:text-rose-400' : isModerateAi ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600 dark:text-slate-400'}`}>
                     {aiScore}%
                   </div>
-                  <div className="text-[10px] text-slate-500 font-medium">Machine Model</div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Machine Model</div>
                 </div>
 
-                <div className="h-10 w-px bg-slate-200 hidden sm:block"></div>
+                <div className="h-10 w-px bg-slate-200 dark:bg-white/10 hidden sm:block"></div>
 
                 <div className="text-center min-w-[90px]">
-                  <div className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Human Authenticity</div>
-                  <div className="text-3xl font-black text-emerald-600">
+                  <div className="text-[10px] text-slate-400 dark:text-slate-400 uppercase font-bold tracking-wider">Human Authenticity</div>
+                  <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
                     {humanScore}%
                   </div>
-                  <div className="text-[10px] text-slate-500 font-medium">Natural Authorship</div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Natural Authorship</div>
                 </div>
 
                 {isHighAi && !changedOutput && (
@@ -720,7 +713,7 @@ export default function AbsoluteDetectorView({
                     <button
                       onClick={handleChangeOnly}
                       disabled={isChanging}
-                      className="w-full sm:w-auto px-5 py-3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-extrabold rounded-xl shadow-md shadow-indigo-500/25 transition active:scale-95 flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ai-btn-sheen"
+                      className="w-full sm:w-auto px-5 py-3 glass-button text-white text-xs font-extrabold rounded-xl shadow-lg shadow-indigo-500/25 transition active:scale-95 flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ai-btn-sheen"
                     >
                       <Zap className="w-3.5 h-3.5 fill-white" />
                       <span>⚡ Change to Human (&lt; 4s)</span>
@@ -735,20 +728,20 @@ export default function AbsoluteDetectorView({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
             {/* Left 7 Cols: Sentence Reading Heatmap */}
-            <div className="lg:col-span-7 bg-white/95 backdrop-blur-lg rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-slate-200/90 p-6 flex flex-col justify-between">
+            <div className="lg:col-span-7 glass-panel rounded-3xl p-6 flex flex-col justify-between">
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div>
-                    <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                    <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
                       <span>🎨</span> Sentence-by-Sentence AI Heatmap
                     </h3>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Click any sentence to inspect specific machine triggers and cliché fingerprints.
                     </p>
                   </div>
 
                   {/* Filter Pills */}
-                  <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-full text-xs font-semibold">
+                  <div className="flex flex-wrap gap-1 glass-panel-subtle p-1 rounded-full text-xs font-semibold">
                     {[
                       { id: 'all', label: `All (${sentences.length})` },
                       { id: 'ai', label: `🔴 AI (${detectorResult.sentences_ai_flagged || 0})` },
@@ -760,8 +753,8 @@ export default function AbsoluteDetectorView({
                         onClick={() => setActiveFilter(f.id)}
                         className={`px-2.5 py-1 rounded-full transition cursor-pointer ${
                           activeFilter === f.id
-                            ? 'bg-white text-slate-900 shadow-2xs font-bold'
-                            : 'text-slate-600 hover:text-slate-900'
+                            ? 'bg-white/90 dark:bg-slate-700/80 text-slate-900 dark:text-white shadow-2xs font-bold border border-white/20'
+                            : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                         }`}
                       >
                         {f.label}
@@ -771,7 +764,7 @@ export default function AbsoluteDetectorView({
                 </div>
 
                 {/* Prose Highlighted Flow */}
-                <div className="p-4 bg-slate-50/70 rounded-2xl border border-slate-200/90 min-h-[220px] max-h-[380px] overflow-y-auto leading-relaxed text-sm">
+                <div className="p-4 glass-panel-subtle rounded-2xl min-h-[220px] max-h-[380px] overflow-y-auto leading-relaxed text-sm">
                   {sentences.length === 0 ? (
                     <div className="text-xs text-slate-400 text-center py-10">No sentences parsed.</div>
                   ) : (
@@ -787,17 +780,17 @@ export default function AbsoluteDetectorView({
                         if (isHiddenByFilter) return null;
 
                         const highlightBg = s.color === 'red'
-                          ? 'bg-rose-100/90 hover:bg-rose-200/90 text-rose-950 border-rose-300'
+                          ? 'bg-rose-100/90 dark:bg-rose-950/70 hover:bg-rose-200/90 text-rose-950 dark:text-rose-100 border-rose-300 dark:border-rose-500/30'
                           : s.color === 'amber'
-                          ? 'bg-amber-100/90 hover:bg-amber-200/90 text-amber-950 border-amber-300'
-                          : 'bg-emerald-100/80 hover:bg-emerald-200/80 text-emerald-950 border-emerald-300';
+                          ? 'bg-amber-100/90 dark:bg-amber-950/70 hover:bg-amber-200/90 text-amber-950 dark:text-amber-100 border-amber-300 dark:border-amber-500/30'
+                          : 'bg-emerald-100/80 dark:bg-emerald-950/70 hover:bg-emerald-200/80 text-emerald-950 dark:text-emerald-100 border-emerald-300 dark:border-emerald-500/30';
 
                         return (
                           <span
                             key={s.index}
                             onClick={() => setSelectedSentenceIndex(s.index)}
                             className={`inline cursor-pointer px-1.5 py-0.5 rounded-lg border transition duration-150 mx-0.5 ${highlightBg} ${
-                              isSelected ? 'ring-2 ring-indigo-600 shadow-2xs font-semibold' : ''
+                              isSelected ? 'ring-2 ring-indigo-600 shadow-md font-semibold' : ''
                             }`}
                             title={`Sentence ${s.index}: ${s.ai_score}% AI`}
                           >
@@ -811,7 +804,7 @@ export default function AbsoluteDetectorView({
               </div>
 
               {/* Heatmap Legend */}
-              <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500 font-medium">
+              <div className="mt-4 pt-3 border-t border-slate-200/40 dark:border-white/5 flex flex-wrap items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> AI Generated (≥70%)
@@ -828,10 +821,10 @@ export default function AbsoluteDetectorView({
             </div>
 
             {/* Right 5 Cols: Sentence Forensic Inspector */}
-            <div className="lg:col-span-5 bg-white/95 backdrop-blur-lg rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-slate-200/90 p-6 flex flex-col justify-between">
+            <div className="lg:col-span-5 glass-panel rounded-3xl p-6 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                  <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
                     <span>🔬</span> Sentence Forensic Inspector
                   </h3>
                   {selectedSentence && (
@@ -844,48 +837,48 @@ export default function AbsoluteDetectorView({
                 {selectedSentence ? (
                   <div className="space-y-4">
                     {/* Sentence Quote */}
-                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-800 italic leading-relaxed">
+                    <div className="p-3.5 glass-panel-subtle rounded-2xl text-xs text-slate-800 dark:text-slate-200 italic leading-relaxed">
                       "{selectedSentence.sentence}"
                     </div>
 
                     {/* Metric Row */}
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 rounded-2xl border bg-slate-50/80 border-slate-200">
+                      <div className="p-3 rounded-2xl glass-card">
                         <div className="text-[10px] text-slate-400 uppercase font-semibold">Sentence AI Score</div>
                         <div className={`text-xl font-black mt-0.5 ${
-                          selectedSentence.color === 'red' ? 'text-rose-600' :
-                          selectedSentence.color === 'amber' ? 'text-amber-600' : 'text-emerald-600'
+                          selectedSentence.color === 'red' ? 'text-rose-600 dark:text-rose-400' :
+                          selectedSentence.color === 'amber' ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
                         }`}>
                           {selectedSentence.ai_score}%
                         </div>
-                        <div className="text-[10px] font-semibold text-slate-500">{selectedSentence.status}</div>
+                        <div className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{selectedSentence.status}</div>
                       </div>
 
-                      <div className="p-3 rounded-2xl border bg-slate-50/80 border-slate-200">
+                      <div className="p-3 rounded-2xl glass-card">
                         <div className="text-[10px] text-slate-400 uppercase font-semibold">Word Length</div>
-                        <div className="text-xl font-black text-slate-800 mt-0.5">
+                        <div className="text-xl font-black text-slate-800 dark:text-slate-200 mt-0.5">
                           {selectedSentence.word_count}
                         </div>
-                        <div className="text-[10px] text-slate-500 font-medium">tokens in sentence</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">tokens in sentence</div>
                       </div>
                     </div>
 
                     {/* Detected Forensic Triggers */}
                     <div>
-                      <div className="text-xs font-bold text-slate-600 mb-2">Detected Forensic Triggers:</div>
+                      <div className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">Detected Forensic Triggers:</div>
                       {selectedSentence.triggers && selectedSentence.triggers.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
                           {selectedSentence.triggers.map((trig, idx) => (
                             <span
                               key={idx}
-                              className="px-2.5 py-1 text-xs font-semibold bg-rose-50 text-rose-800 rounded-full border border-rose-200 shadow-2xs"
+                              className="px-2.5 py-1 text-xs font-semibold glass-pill bg-rose-500/20 text-rose-800 dark:text-rose-200 border-rose-500/30 shadow-2xs"
                             >
                               ⚠️ {trig}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl font-medium">
+                        <div className="text-xs text-emerald-700 dark:text-emerald-300 glass-panel-subtle bg-emerald-500/10 border-emerald-500/30 p-2.5 rounded-xl font-medium">
                           ✓ No machine triggers detected. Sentence has organic human cadence and active voice.
                         </div>
                       )}
@@ -894,12 +887,12 @@ export default function AbsoluteDetectorView({
                     {/* Matched Clichés */}
                     {selectedSentence.matched_cliches && selectedSentence.matched_cliches.length > 0 && (
                       <div>
-                        <div className="text-xs font-bold text-slate-600 mb-1.5">Flagged AI Bigrams / Watermarks:</div>
+                        <div className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">Flagged AI Bigrams / Watermarks:</div>
                         <div className="flex flex-wrap gap-1.5">
                           {selectedSentence.matched_cliches.map((cl, idx) => (
                             <span
                               key={idx}
-                              className="px-2 py-0.5 text-[11px] font-mono font-semibold bg-amber-100 text-amber-900 rounded-lg border border-amber-300"
+                              className="px-2 py-0.5 text-[11px] font-mono font-semibold glass-pill bg-amber-500/20 text-amber-900 dark:text-amber-200 border-amber-500/30"
                             >
                               "{cl}"
                             </span>
@@ -916,11 +909,11 @@ export default function AbsoluteDetectorView({
               </div>
 
               {selectedSentence && selectedSentence.color === 'red' && (
-                <div className="mt-4 pt-3 border-t border-slate-100">
+                <div className="mt-4 pt-3 border-t border-slate-200/40 dark:border-white/5">
                   <button
                     onClick={handleChangeOnly}
                     disabled={isChanging}
-                    className="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full py-2.5 glass-button-secondary text-indigo-700 dark:text-indigo-300 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     ⚡ Auto-Change Entire Text into Human Prose
                   </button>
@@ -931,20 +924,20 @@ export default function AbsoluteDetectorView({
           </div>
 
           {/* 7 SIMULATED LEADING DETECTORS MATRIX */}
-          <div className="bg-white/95 backdrop-blur-lg rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-slate-200/90 p-6 md:p-8">
+          <div className="glass-panel rounded-3xl p-6 md:p-8">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
               <div>
-                <h3 className="font-bold text-slate-900 text-lg tracking-tight">
+                <h3 className="font-bold text-slate-900 dark:text-white text-lg tracking-tight">
                   Simulated Detection Matrix (7 Leading Commercial Detectors)
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Simulates proprietary evaluation heuristics for Turnitin, GPTZero, CopyLeaks, Winston, Originality.ai, Sapling, and ZeroGPT.
                 </p>
               </div>
 
               <button
                 onClick={handleDownloadCertificate}
-                className="px-3.5 py-1.5 text-xs font-semibold bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-full text-slate-700 shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+                className="glass-button-secondary px-3.5 py-1.5 text-xs font-semibold rounded-full text-slate-700 dark:text-slate-200 shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
               >
                 📑 Export Forensic Audit JSON
               </button>
@@ -954,22 +947,22 @@ export default function AbsoluteDetectorView({
               {Object.entries(matrix).map(([k, d]) => {
                 const passed = d.human_score >= 70.0;
                 return (
-                  <div key={k} className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/90 flex flex-col justify-between hover:border-indigo-300 transition">
+                  <div key={k} className="p-4 glass-card rounded-2xl flex flex-col justify-between transition">
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-bold text-slate-800 truncate" title={d.name}>{d.name}</span>
-                        <span className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded-full ${
-                          passed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate" title={d.name}>{d.name}</span>
+                        <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-full glass-pill ${
+                          passed ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 border-emerald-500/30' : 'bg-rose-500/20 text-rose-800 dark:text-rose-200 border-rose-500/30'
                         }`}>
                           {passed ? 'HUMAN ✓' : 'FLAGGED'}
                         </span>
                       </div>
 
-                      <div className="text-2xl font-black text-slate-900 my-1">{d.human_score}%</div>
-                      <div className="text-[11px] text-slate-500">Human Score</div>
+                      <div className="text-2xl font-black text-slate-900 dark:text-white my-1">{d.human_score}%</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">Human Score</div>
 
                       {/* Visual meter bar */}
-                      <div className="w-full bg-slate-200 h-1.5 rounded-full mt-2 overflow-hidden">
+                      <div className="w-full bg-slate-200/50 dark:bg-white/10 h-1.5 rounded-full mt-2 overflow-hidden">
                         <div
                           className={`h-full rounded-full ${passed ? 'bg-emerald-500' : 'bg-rose-500'}`}
                           style={{ width: `${d.human_score}%` }}
@@ -977,7 +970,7 @@ export default function AbsoluteDetectorView({
                       </div>
                     </div>
 
-                    <div className="mt-3 pt-2 border-t border-slate-200/60 text-[10px] text-slate-400 truncate" title={d.focus}>
+                    <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-white/5 text-[10px] text-slate-400 truncate" title={d.focus}>
                       {d.focus}
                     </div>
                   </div>
@@ -988,96 +981,96 @@ export default function AbsoluteDetectorView({
 
           {/* FORENSIC STYLOMETRIC DIAGNOSTICS GRID */}
           {breakdown && (
-            <div className="bg-white/95 backdrop-blur-lg rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] border border-slate-200/90 p-6 md:p-8">
-              <h3 className="font-bold text-slate-900 text-lg tracking-tight mb-1">
+            <div className="glass-panel rounded-3xl p-6 md:p-8">
+              <h3 className="font-bold text-slate-900 dark:text-white text-lg tracking-tight mb-1">
                 Deep Forensic Stylometry &amp; Token Diagnostics
               </h3>
-              <p className="text-xs text-slate-500 mb-6">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
                 Mathematical indicators used by academic and enterprise classifiers to expose machine generation.
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
                 {/* Card 1: Shannon Lexical Entropy */}
-                <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-2xl flex flex-col justify-between">
+                <div className="p-4 glass-card rounded-2xl flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-slate-800">Shannon Lexical Entropy</span>
-                      <span className="text-[10px] font-mono font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Shannon Lexical Entropy</span>
+                      <span className="text-[10px] font-mono font-bold glass-pill bg-blue-500/20 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full border-blue-500/30">
                         H(X)
                       </span>
                     </div>
-                    <div className="text-2xl font-black text-slate-900 mt-1">
-                      {breakdown.entropy?.value ?? 0} <span className="text-xs font-normal text-slate-500">bits</span>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                      {breakdown.entropy?.value ?? 0} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">bits</span>
                     </div>
-                    <p className="text-[11px] text-slate-600 mt-1 leading-snug">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-snug">
                       {breakdown.entropy?.status}
                     </p>
                   </div>
-                  <div className="mt-3 pt-2 border-t border-slate-200 text-[10px] text-slate-400">
+                  <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-white/5 text-[10px] text-slate-400">
                     Benchmark: AI tokens &lt;4.5 bits vs Human prose &gt;5.0 bits
                   </div>
                 </div>
 
                 {/* Card 2: Burstiness Cadence */}
-                <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-2xl flex flex-col justify-between">
+                <div className="p-4 glass-card rounded-2xl flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-slate-800">Sentence Burstiness</span>
-                      <span className="text-[10px] font-mono font-bold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Sentence Burstiness</span>
+                      <span className="text-[10px] font-mono font-bold glass-pill bg-indigo-500/20 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-full border-indigo-500/30">
                         CV
                       </span>
                     </div>
-                    <div className="text-2xl font-black text-slate-900 mt-1">
-                      {breakdown.burstiness?.cv ?? 0} <span className="text-xs font-normal text-slate-500">variance</span>
+                    <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                      {breakdown.burstiness?.cv ?? 0} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">variance</span>
                     </div>
-                    <p className="text-[11px] text-slate-600 mt-1 leading-snug">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-snug">
                       {breakdown.burstiness?.status}
                     </p>
                   </div>
-                  <div className="mt-3 pt-2 border-t border-slate-200 text-[10px] text-slate-400">
+                  <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-white/5 text-[10px] text-slate-400">
                     Benchmark: Uniform AI &lt;0.30 vs Dynamic human &gt;0.40
                   </div>
                 </div>
 
                 {/* Card 3: Vocabulary Diversity */}
-                <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-2xl flex flex-col justify-between">
+                <div className="p-4 glass-card rounded-2xl flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-slate-800">Vocabulary Richness</span>
-                      <span className="text-[10px] font-mono font-bold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">Vocabulary Richness</span>
+                      <span className="text-[10px] font-mono font-bold glass-pill bg-purple-500/20 text-purple-800 dark:text-purple-300 px-2 py-0.5 rounded-full border-purple-500/30">
                         TTR
                       </span>
                     </div>
-                    <div className="text-2xl font-black text-slate-900 mt-1">
+                    <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
                       {Math.round((breakdown.vocabulary_diversity?.ttr ?? 0) * 100)}%
                     </div>
-                    <p className="text-[11px] text-slate-600 mt-1 leading-snug">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-snug">
                       {breakdown.vocabulary_diversity?.unique_words} unique / {breakdown.vocabulary_diversity?.total_words} words
                     </p>
                   </div>
-                  <div className="mt-3 pt-2 border-t border-slate-200 text-[10px] text-slate-400">
+                  <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-white/5 text-[10px] text-slate-400">
                     Hapax ratio: {Math.round((breakdown.vocabulary_diversity?.hapax_ratio ?? 0) * 100)}% single-use words
                   </div>
                 </div>
 
                 {/* Card 4: Cliché Watermarks */}
-                <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-2xl flex flex-col justify-between">
+                <div className="p-4 glass-card rounded-2xl flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-bold text-slate-800">AI Cliché Fingerprints</span>
-                      <span className="text-[10px] font-mono font-bold bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">AI Cliché Fingerprints</span>
+                      <span className="text-[10px] font-mono font-bold glass-pill bg-rose-500/20 text-rose-800 dark:text-rose-300 px-2 py-0.5 rounded-full border-rose-500/30">
                         Trigrams
                       </span>
                     </div>
-                    <div className="text-2xl font-black text-rose-600 mt-1">
-                      {breakdown.cliche_markers?.count ?? 0} <span className="text-xs font-normal text-slate-500">markers</span>
+                    <div className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">
+                      {breakdown.cliche_markers?.count ?? 0} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">markers</span>
                     </div>
-                    <p className="text-[11px] text-slate-600 mt-1 leading-snug">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-snug">
                       Density: {breakdown.cliche_markers?.density_pct ?? 0}% of text
                     </p>
                   </div>
-                  <div className="mt-3 pt-2 border-t border-slate-200 text-[10px] text-slate-400">
+                  <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-white/5 text-[10px] text-slate-400">
                     {breakdown.definitional_structure?.status}
                   </div>
                 </div>

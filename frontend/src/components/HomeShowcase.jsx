@@ -158,7 +158,7 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
           <div className="w-16 h-16 rounded-3xl glass-badge-brain flex items-center justify-center p-2.5 shadow-xl shadow-teal-500/20 bg-slate-900 border border-teal-500/40 hover:scale-105 transition-transform duration-300">
             <img src={brainLogo} alt="AI Humanizer Logo" className="w-full h-full object-contain filter brightness-110 drop-shadow-md" />
           </div>
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-teal-500/10 dark:bg-teal-400/10 border border-teal-500/30 text-teal-700 dark:text-teal-300 text-xs font-bold shadow-xs">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-pill text-teal-700 dark:text-teal-300 text-xs font-bold border-teal-500/30">
             <Shield className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
             <span>7-Detector Forensic Matrix • 100% Turnitin &amp; GPTZero Bypass</span>
           </div>
@@ -182,7 +182,7 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
         <div className="flex flex-wrap items-center justify-center gap-3.5 pt-2">
           <button
             onClick={() => onNavigateToHumanize()}
-            className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-[#0f5c56] to-[#0a423e] hover:from-[#0d4f4a] hover:to-[#07302d] dark:from-teal-600 dark:to-emerald-600 dark:hover:from-teal-500 dark:hover:to-emerald-500 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center gap-2 cursor-pointer"
+            className="px-6 py-3.5 rounded-2xl glass-button text-white font-bold text-sm shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center gap-2 cursor-pointer"
           >
             <Sparkles className="w-4 h-4 text-teal-300" />
             <span>Open Humanize Text Studio</span>
@@ -191,7 +191,7 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
 
           <button
             onClick={onNavigateToDetector}
-            className="px-6 py-3.5 rounded-2xl bg-white dark:bg-slate-800/90 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 font-bold text-sm border border-slate-200 dark:border-slate-700 shadow-xs hover:shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+            className="px-6 py-3.5 rounded-2xl glass-button-secondary text-slate-800 dark:text-slate-100 font-bold text-sm shadow-xs hover:shadow-sm transition-all flex items-center gap-2 cursor-pointer"
           >
             <Shield className="w-4 h-4 text-teal-600 dark:text-teal-400" />
             <span>Scan in AI Detector (Free)</span>
@@ -218,10 +218,10 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
       {/* ======================================================== */}
       {/* 2. INTERACTIVE "WHAT OUR TOOL DOES" DEMO                 */}
       {/* ======================================================== */}
-      <section className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-6">
+      <section className="glass-panel rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
         
         {/* Header with Sample Tabs */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/60 dark:border-white/10 pb-5">
           <div>
             <div className="text-[11px] font-bold text-teal-600 dark:text-teal-400 tracking-wider uppercase">
               INTERACTIVE DEMONSTRATION
@@ -235,14 +235,14 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
           </div>
 
           {/* Sample Selector Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200/80 dark:border-slate-700">
+          <div className="flex flex-wrap items-center gap-1.5 glass-panel-subtle p-1 rounded-2xl">
             {INTERACTIVE_SAMPLES.map(sample => (
               <button
                 key={sample.id}
                 onClick={() => setSelectedSample(sample)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                   selectedSample.id === sample.id
-                    ? 'bg-white dark:bg-slate-900 text-[#0f5c56] dark:text-teal-400 shadow-xs'
+                    ? 'glass-pill bg-white dark:bg-slate-800 text-[#0f5c56] dark:text-teal-400 font-extrabold shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -256,14 +256,14 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
         <div key={selectedSample.id} className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch animate-sample-fade">
           
           {/* LEFT: Before / Robotic AI */}
-          <div className="p-6 rounded-2xl bg-red-500/5 border border-red-500/20 dark:border-red-500/30 flex flex-col justify-between space-y-4 relative">
+          <div className="p-6 rounded-3xl glass-card-rose flex flex-col justify-between space-y-4 relative">
             <div>
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold text-red-600 dark:text-red-400 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
                   <span>{selectedSample.roboticTitle}</span>
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-700 dark:text-red-300 text-[11px] font-extrabold border border-red-500/30">
+                <span className="px-2.5 py-0.5 rounded-full glass-pill bg-rose-500/20 text-rose-700 dark:text-rose-300 text-[11px] font-extrabold border-rose-500/30">
                   {selectedSample.aiScore}% AI Detected
                 </span>
               </div>
@@ -274,10 +274,10 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
               </div>
             </div>
 
-            <div className="pt-3 border-t border-red-500/20 flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold text-red-700 dark:text-red-400">Flagged AI markers:</span>
+            <div className="pt-3 border-t border-rose-500/20 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-400">Flagged AI markers:</span>
               {selectedSample.cliches.map((c, i) => (
-                <span key={i} className="text-[10px] font-mono bg-red-500/10 text-red-700 dark:text-red-300 px-2 py-0.5 rounded border border-red-500/20">
+                <span key={i} className="text-[10px] font-mono glass-pill bg-rose-500/15 text-rose-700 dark:text-rose-300 px-2 py-0.5 rounded border-rose-500/30">
                   "{c}"
                 </span>
               ))}
@@ -285,14 +285,14 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
           </div>
 
           {/* RIGHT: After / AI Humanizer Output */}
-          <div className="p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/30 dark:border-emerald-500/40 flex flex-col justify-between space-y-4 relative">
+          <div className="p-6 rounded-3xl glass-card-emerald flex flex-col justify-between space-y-4 relative">
             <div>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span>{selectedSample.humanizedTitle}</span>
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[11px] font-extrabold border border-emerald-500/40">
+                <span className="px-2.5 py-0.5 rounded-full glass-pill bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[11px] font-extrabold border-emerald-500/40">
                   0% AI • 100% Human Pass
                 </span>
               </div>
@@ -308,7 +308,7 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
                 <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">Protected facts:</span>
                 {selectedSample.lockedEntities.map((ent, i) => (
-                  <span key={i} className="text-[10px] font-mono bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 px-2 py-0.5 rounded border border-emerald-500/30">
+                  <span key={i} className="text-[10px] font-mono glass-pill bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 px-2 py-0.5 rounded border-emerald-500/30">
                     {ent}
                   </span>
                 ))}
@@ -351,14 +351,14 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Light */}
-          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs hover:shadow-md transition space-y-4">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-lg border border-amber-500/20">
+          <div className="p-6 rounded-3xl glass-card space-y-4">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-lg border border-amber-500/30">
               ⚡
             </div>
             <div>
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">Light Strength</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full glass-pill text-slate-600 dark:text-slate-300">
                   Minimal Polish
                 </span>
               </div>
@@ -366,23 +366,23 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
                 Retains ~85-90% of your exact original sentence structures. Surgically removes blatant AI watermarks and dead-giveaways without changing your distinctive authorial voice.
               </p>
             </div>
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+            <div className="pt-3 border-t border-white/40 dark:border-white/10 text-[11px] font-semibold text-slate-600 dark:text-slate-400">
               Ideal for: Executive memos, peer-reviewed academic drafts, and formal correspondence.
             </div>
           </div>
 
           {/* Balanced */}
-          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border-2 border-teal-500/40 shadow-md space-y-4 relative">
-            <div className="absolute -top-3 right-6 bg-teal-600 text-white text-[10px] font-extrabold px-3 py-0.5 rounded-full shadow-xs">
+          <div className="p-6 rounded-3xl glass-card border-2 border-teal-500/50 shadow-xl space-y-4 relative ring-2 ring-teal-500/20">
+            <div className="absolute -top-3 right-6 bg-teal-600 text-white text-[10px] font-extrabold px-3 py-0.5 rounded-full shadow-md">
               RECOMMENDED
             </div>
-            <div className="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold text-lg border border-teal-500/30">
+            <div className="w-10 h-10 rounded-2xl bg-teal-500/15 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold text-lg border border-teal-500/30">
               ✨
             </div>
             <div>
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">Balanced Strength</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-700 dark:text-teal-300">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full glass-pill bg-teal-500/20 text-teal-700 dark:text-teal-300 border-teal-500/30">
                   100% Bypass
                 </span>
               </div>
@@ -390,20 +390,20 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
                 The gold standard. Restructures uniform robotic sentences into organic human cadence with dynamic burstiness while strictly preserving 100% of facts, dates, and technical names.
               </p>
             </div>
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-teal-700 dark:text-teal-400">
+            <div className="pt-3 border-t border-white/40 dark:border-white/10 text-[11px] font-semibold text-teal-700 dark:text-teal-400">
               Guaranteed: 0% AI detection on Turnitin, GPTZero, CopyLeaks, and Originality.ai.
             </div>
           </div>
 
           {/* Strong */}
-          <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs hover:shadow-md transition space-y-4">
-            <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-lg border border-purple-500/20">
+          <div className="p-6 rounded-3xl glass-card space-y-4">
+            <div className="w-10 h-10 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-lg border border-purple-500/30">
               🔥
             </div>
             <div>
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">Strong Strength</h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full glass-pill text-slate-600 dark:text-slate-300">
                   Full Overhaul
                 </span>
               </div>
@@ -411,7 +411,7 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
                 Complete active-voice overhaul. Breaks uniform paragraphs with high syntactic burstiness, vivid human vocabulary, and authentic colloquial rhythm shifts.
               </p>
             </div>
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+            <div className="pt-3 border-t border-white/40 dark:border-white/10 text-[11px] font-semibold text-slate-600 dark:text-slate-400">
               Ideal for: Heavy ChatGPT drafts, creative storytelling, blog articles, and tough detectors.
             </div>
           </div>
@@ -455,14 +455,14 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
                   onNavigateToHumanize({ context: sec.id });
                   onToast(`Active Context: ${sec.title}`);
                 }}
-                className="group p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-teal-500/40 dark:hover:border-teal-500/40 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-4 hover:-translate-y-0.5"
+                className="group p-5 rounded-2xl glass-card hover:border-teal-500/50 hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between space-y-4 hover:-translate-y-1"
               >
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200 group-hover:bg-teal-500/20 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition">
+                    <div className="w-9 h-9 rounded-xl glass-panel-subtle flex items-center justify-center text-slate-700 dark:text-slate-200 group-hover:bg-teal-500/20 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition">
                       <IconComp className="w-4 h-4" />
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full glass-pill text-slate-600 dark:text-slate-300">
                       {sec.badge}
                     </span>
                   </div>
@@ -488,8 +488,8 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
       {/* ======================================================== */}
       {/* 5. 7-DETECTOR FORENSIC MATRIX BENCHMARK                  */}
       {/* ======================================================== */}
-      <section className="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl border border-slate-800">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <section className="glass-panel text-white rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl border border-white/20 bg-slate-900/60 dark:bg-slate-950/60 backdrop-blur-3xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-5">
           <div>
             <div className="text-[11px] font-bold text-teal-400 tracking-wider uppercase">
               REAL-TIME BYPASS GUARANTEE
@@ -497,13 +497,13 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
             <h2 className="text-xl sm:text-2xl font-extrabold text-white mt-0.5">
               Calibrated Against All 7 Major AI Detectors
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-300 mt-1">
               Every sentence is audited for uniform length, burstiness, Shannon entropy, and trademark LLM watermarks.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-emerald-400 bg-emerald-500/20 border border-emerald-500/40 px-3 py-1 rounded-full">
+            <span className="text-xs font-bold text-emerald-400 glass-pill bg-emerald-500/20 border-emerald-500/40 px-3 py-1 rounded-full">
               ● 7/7 Matrix Bypassed
             </span>
           </div>
@@ -514,21 +514,21 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
           {DETECTOR_BENCHMARKS.map((det) => (
             <div
               key={det.name}
-              className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700/80 hover:border-teal-500/50 transition flex flex-col justify-between space-y-2.5"
+              className="p-4 rounded-2xl glass-panel-subtle hover:border-teal-400/50 transition flex flex-col justify-between space-y-2.5"
             >
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-bold text-white">{det.name}</span>
-                  <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded">
+                  <span className="text-[10px] font-mono font-bold text-emerald-400 glass-pill bg-emerald-500/20 px-1.5 py-0.5 rounded">
                     {det.aiScore}
                   </span>
                 </div>
-                <div className="text-[11px] text-slate-400 font-medium">
+                <div className="text-[11px] text-slate-300 font-medium">
                   Focus: {det.focus}
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 pt-1 border-t border-slate-700/60">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 pt-1 border-t border-white/10">
                 <Check className="w-3.5 h-3.5" />
                 <span>{det.badge}</span>
               </div>
@@ -536,11 +536,11 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
           ))}
 
           {/* Final Callout Tile */}
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-teal-900/60 to-emerald-950/60 border border-teal-500/40 flex flex-col justify-between">
+          <div className="p-4 rounded-2xl glass-card-emerald border border-teal-400/50 flex flex-col justify-between">
             <div>
               <div className="text-xs font-bold text-teal-300">Forensic Confidence</div>
               <div className="text-2xl font-extrabold text-white mt-1">99.8%</div>
-              <div className="text-[11px] text-slate-300 mt-1">Absolute Human Calibrated</div>
+              <div className="text-[11px] text-teal-100 mt-1">Absolute Human Calibrated</div>
             </div>
             <button
               onClick={onNavigateToDetector}
@@ -556,19 +556,19 @@ export default function HomeShowcase({ onNavigateToHumanize, onNavigateToDetecto
       {/* ======================================================== */}
       {/* 6. CALL TO ACTION FOOTER                                 */}
       {/* ======================================================== */}
-      <section className="p-8 sm:p-10 rounded-3xl bg-gradient-to-br from-teal-900 via-[#0b2826] to-slate-900 text-white text-center space-y-5 border border-teal-500/30 shadow-lg">
+      <section className="p-8 sm:p-10 rounded-3xl glass-panel bg-gradient-to-br from-teal-900/60 via-[#0b2826]/60 to-slate-900/60 backdrop-blur-3xl text-white text-center space-y-5 border border-teal-400/50 shadow-2xl">
         <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
           Ready to Make Your Writing Truly Undetectable?
         </h2>
-        <p className="text-slate-300 text-xs sm:text-sm max-w-xl mx-auto leading-relaxed">
+        <p className="text-slate-200 text-xs sm:text-sm max-w-xl mx-auto leading-relaxed">
           Paste your text, choose your context and strength tier, and get authentic human-sounding text in seconds.
         </p>
         <div>
           <button
             onClick={() => onNavigateToHumanize()}
-            className="px-8 py-3.5 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-extrabold text-sm shadow-md hover:shadow-lg transition-all transform hover:scale-105 inline-flex items-center gap-2 cursor-pointer"
+            className="px-8 py-3.5 rounded-2xl glass-button text-white font-extrabold text-sm shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 inline-flex items-center gap-2 cursor-pointer"
           >
-            <Sparkles className="w-4 h-4 text-slate-950" />
+            <Sparkles className="w-4 h-4 text-teal-200" />
             <span>Start Humanizing Text Now →</span>
           </button>
         </div>
