@@ -107,7 +107,9 @@ const EXTENDED_AI_CLICHES = [
   "enhance decision-making", "integration of intelligent algorithms", "ensures higher accuracy",
   "reduced costs", "across various sectors", "deep learning is a subset", "in order to optimize",
   "decision-making processes", "facilitate seamless integration", "comprehensive understanding",
-  "fundamental process", "cornerstone of modern"
+  "fundamental process", "cornerstone of modern", "this phenomenon is commonly referred to as",
+  "commonly referred to as", "effectively eliminates that class from consideration",
+  "effectively eliminates", "from consideration", "zero-frequency problem", "naive bayes classifier"
 ];
 
 function splitIntoSentences(text) {
@@ -158,7 +160,7 @@ function analyzeStylometrics(text) {
   // AI structural buzzwords & participles
   const aiStructureMatches = (lower.match(/\b(leverage|leveraging|leveraged|streamline|streamlining|streamlines|robust|seamless|seamlessly|foster|fostering|transformative|transforming|transforms|revolutionizing|cutting-edge|state-of-the-art|game-changer|bespoke|holistic|synergy|intricate|comprehensive|indispensable|delve|delves|delving|testament|tapestry|multifaceted|plethora|myriad|paramount|automated|automation|optimizing|optimization|facilitating|facilitates|harnessing|empowering|empowers|underscores|fundamental|mechanisms|capabilities)\b/g) || []).length;
   // AI definitional, expository and nominalization templates
-  const aiDefinitionalMatches = (lower.match(/\b(?:artificial intelligence|machine learning|deep learning|neural networks?|large language models?|llms?|nlp)\b|\b(?:is|are) (?:the|a|an) (?:branch|subset|process|mechanism|field|discipline|system|study|ability|framework|method|approach)\b|\b(?:is|are) (?:transforming|revolutionizing|reshaping|powering|driving|altering|redefining)\b|\b(?:is|are) (?:defined as|characterized by|designed to|intended to|aimed at|responsible for|capable of)\b|\b(?:through|via) (?:automated|innovative|advanced|sophisticated|cutting-edge|modern)\b|\b(?:ensures?|enables?|allows? for|provides?) (?:seamless|higher|greater|improved|efficient|enhanced)\b|\bacross (?:various|multiple|different) (?:sectors|industries|domains|fields|disciplines)\b|\bmodern (?:industries|businesses|organizations|enterprises)\b|\bautomated (?:processes|workflows|systems|operations)\b|\bby which [a-z]+ (?:convert|transform|utilize|operate)\b|\bplays a (?:vital|pivotal|crucial|key|significant|central) role\b|\bcapable of performing tasks\b|\btypically require\b|\bthe (?:implementation|utilization|optimization|facilitation|establishment|advancement) of\b/g) || []).length;
+  const aiDefinitionalMatches = (lower.match(/\b(?:artificial intelligence|machine learning|deep learning|neural networks?|large language models?|llms?|nlp)\b|\b(?:is|are) (?:the|a|an) (?:branch|subset|process|mechanism|field|discipline|system|study|ability|framework|method|approach)\b|\b(?:is|are) (?:transforming|revolutionizing|reshaping|powering|driving|altering|redefining)\b|\b(?:is|are) (?:defined as|characterized by|designed to|intended to|aimed at|responsible for|capable of|commonly referred to as|known as)\b|\b(?:through|via) (?:automated|innovative|advanced|sophisticated|cutting-edge|modern)\b|\b(?:ensures?|enables?|allows? for|provides?) (?:seamless|higher|greater|improved|efficient|enhanced)\b|\bacross (?:various|multiple|different) (?:sectors|industries|domains|fields|disciplines)\b|\bmodern (?:industries|businesses|organizations|enterprises)\b|\bautomated (?:processes|workflows|systems|operations)\b|\bby which [a-z]+ (?:convert|transform|utilize|operate)\b|\bplays a (?:vital|pivotal|crucial|key|significant|central) role\b|\bcapable of performing tasks\b|\btypically require\b|\bthe (?:implementation|utilization|optimization|facilitation|establishment|advancement) of\b|\b(?:this phenomenon|commonly referred to as|effectively eliminates|naive bayes|zero-frequency|multiplies the entire probability)\b/g) || []).length;
 
   // Compute authentic AI score
   let baseAi = 15;
@@ -289,8 +291,7 @@ Output strictly valid JSON with no markdown wrapping:
         headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(3500),
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json" }
+          contents: [{ parts: [{ text: prompt }] }]
         })
       });
       if (!res.ok) {
@@ -298,10 +299,11 @@ Output strictly valid JSON with no markdown wrapping:
         continue;
       }
       const data = await res.json();
-      const rawJson = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!rawJson) continue;
-      const cleanJson = rawJson.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-      return JSON.parse(cleanJson);
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) continue;
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) continue;
+      return JSON.parse(jsonMatch[0]);
     } catch {
       continue;
     }
@@ -499,7 +501,16 @@ function humanizeLocally(text, context, tone, aggressiveness = 'balanced') {
       .replace(/\bensures higher accuracy\b/gi, 'delivers higher accuracy')
       .replace(/\breduced costs\b/gi, 'lower costs')
       .replace(/\bacross various sectors\b/gi, 'across multiple fields')
-      .replace(/\bin order to optimize\b/gi, 'to optimize');
+      .replace(/\bin order to optimize\b/gi, 'to optimize')
+      .replace(/\bthis phenomenon is commonly referred to as\b/gi, 'This is what is called')
+      .replace(/\bis commonly referred to as\b/gi, 'is known as')
+      .replace(/\bcommonly referred to as\b/gi, 'often called')
+      .replace(/\beffectively eliminates that class from consideration\b/gi, 'drops that class completely')
+      .replace(/\beffectively eliminates\b/gi, 'completely removes')
+      .replace(/\bfrom consideration\b/gi, 'entirely')
+      .replace(/\bnever appeared together with the label\b/gi, 'never showed up alongside the label')
+      .replace(/\bin the training data\b/gi, 'in the training set')
+      .replace(/\bmultiplies the entire probability by zero\b/gi, 'multiplies the whole probability by zero');
 
     // 3. Contractions & Cadence Flow
     if (t === 'stealth' || t === 'conversational' || t === 'casual' || agg !== 'light') {
