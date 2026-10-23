@@ -809,7 +809,7 @@ Return ONLY the raw humanized text without any intro, markdown headings, or quot
         system_instruction = self.build_system_prompt(context, tone, locked_entities, aggressiveness=agg)
         user_prompt = f"Rewrite this text into 100% natural, human-authored writing matching strength level '{agg}'. Ensure zero AI patterns, authentic burstiness, and preserved bullet points or list formatting if provided. Keep all facts, numbers, dates, and names:\n\n{text}"
 
-        models_to_try = ["gemini-3.8-flash", "gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
+        models_to_try = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.8-flash"]
         last_err = None
         for model_name in models_to_try:
             try:

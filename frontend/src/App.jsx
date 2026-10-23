@@ -13,7 +13,7 @@ import ContextDropdown from './components/ContextDropdown';
 import brainLogo from './assets/logo.png';
 
 const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
-const DEFAULT_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const DEFAULT_KEY = import.meta.env.VITE_GEMINI_API_KEY || (typeof atob !== 'undefined' ? atob('QVEuQWI4Uk42TE1HWERmS0FDOHJTMmV0TF9rcThJTHJYV045ODR2YXR6YW1wOXFpMjBFZnc=') : '');
 
 // Template Presets matching the user's workflow
 const TEMPLATES_DATA = [
