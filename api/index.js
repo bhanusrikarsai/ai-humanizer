@@ -957,17 +957,25 @@ export default async function handler(req, res) {
       analysis.detection_engine = 'Google Gemini 3.8 Flash Absolute Forensics';
 
       if (geminiData.sentences && Array.isArray(geminiData.sentences) && geminiData.sentences.length > 0) {
-        analysis.sentence_heatmap = geminiData.sentences.map((s, idx) => ({
-          index: idx + 1,
-          sentence: s.sentence,
-          text: s.sentence,
-          ai_score: s.ai_score,
-          human_score: 100 - s.ai_score,
-          color: s.color || (s.ai_score >= 70 ? 'red' : s.ai_score >= 40 ? 'amber' : 'green'),
-          flag: s.flag || (s.ai_score >= 70 ? 'AI Generated' : s.ai_score >= 40 ? 'Likely AI' : 'Human Written'),
-          reason: s.reason || `${s.ai_score}% probability`
-        }));
+        // When overall AI is >=80%, sentences with >=50% score should be red
+        const redThresh = aiProb >= 80 ? 50 : 70;
+        const amberThresh = aiProb >= 80 ? 30 : 40;
+        analysis.sentence_heatmap = geminiData.sentences.map((s, idx) => {
+          const score = Number(s.ai_score) || aiProb;
+          const color = s.color || (score >= redThresh ? 'red' : score >= amberThresh ? 'amber' : 'green');
+          return {
+            index: idx + 1,
+            sentence: s.sentence,
+            text: s.sentence,
+            ai_score: score,
+            human_score: 100 - score,
+            color,
+            flag: color === 'red' ? 'AI Generated' : color === 'amber' ? 'Likely AI' : 'Human Written',
+            reason: s.reason || `${score}% AI probability`
+          };
+        });
       }
+
       // If Gemini didn't provide sentences (or gave empty array), keep local heatmap
       // but still recalculate colors based on updated aiProb
       if (!geminiData.sentences || !Array.isArray(geminiData.sentences) || geminiData.sentences.length === 0) {
