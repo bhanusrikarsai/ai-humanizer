@@ -293,8 +293,10 @@ Output strictly valid JSON with no markdown wrapping:
           generationConfig: { responseMimeType: "application/json" }
         })
       });
-      if (res.status === 429 || res.status === 401 || res.status === 403) break;
-      if (!res.ok) continue;
+      if (!res.ok) {
+        if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 429) break;
+        continue;
+      }
       const data = await res.json();
       const rawJson = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!rawJson) continue;
@@ -686,8 +688,10 @@ Output ONLY the final humanized text. Do NOT add preamble, introductory comments
           generationConfig: { temperature: temp }
         })
       });
-      if (res.status === 429 || res.status === 401 || res.status === 403) break;
-      if (!res.ok) continue;
+      if (!res.ok) {
+        if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 429) break;
+        continue;
+      }
       const data = await res.json();
       const textOut = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
       if (textOut) return textOut;
