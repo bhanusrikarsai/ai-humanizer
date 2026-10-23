@@ -643,7 +643,7 @@ function humanizeLocally(text, context, tone, aggressiveness = 'balanced') {
       .replace(/\bfundamentally transforming\b/gi, 'completely changing')
       .replace(/\bfundamentally transform\b/gi, 'completely change')
       .replace(/\bfundamentally changed\b/gi, 'completely changed')
-      .replace(/\bneural networks with multiple layers\b/gi, 'multi-layer neural networks')
+      .replace(/\bneural networks with multiple layers\b/gi, 'multi-layer neural nets')
       .replace(/\bneural network\b/gi, 'neural net')
       .replace(/\bneural networks\b/gi, 'neural nets')
       .replace(/\bensures?\b/gi, 'makes sure')
@@ -652,7 +652,10 @@ function humanizeLocally(text, context, tone, aggressiveness = 'balanced') {
       .replace(/\benhancing\b/gi, 'improving')
       .replace(/\bimplementing\b/gi, 'rolling out')
       .replace(/\bimplementation\b/gi, 'rollout')
-      .replace(/\bsolutions?\b/gi, 'approach')
+      .replace(/\brobust solution[s]?\b/gi, 'solid approach')
+      .replace(/\brobust approach\b/gi, 'strong approach')
+      .replace(/\brobust\b/gi, 'solid')
+      .replace(/\bsolution[s]?\b/gi, 'approach')
       .replace(/\boptimize[sd]?\b/gi, 'improve')
       .replace(/\boptimizing\b/gi, 'improving')
       .replace(/\boptimization\b/gi, 'improvement')
@@ -677,7 +680,9 @@ function humanizeLocally(text, context, tone, aggressiveness = 'balanced') {
       .replace(/\bproactively\b/gi, 'actively')
       .replace(/\bseek(?:s|ing)? to\b/gi, 'aim to')
       .replace(/\ballows? for\b/gi, 'lets')
-      .replace(/\bprovide[sd]? a\b/gi, 'give a');
+      .replace(/\bprovide[sd]? a\b/gi, 'give a')
+      .replace(/\bongoing commitment\b/gi, 'continued focus')
+      .replace(/\bcompleting transforming\b/gi, 'completely changing');
 
 
     // 3. Contractions & Cadence Flow
@@ -951,7 +956,7 @@ export default async function handler(req, res) {
       analysis.gemini_reasoning = geminiData.reasoning || '';
       analysis.detection_engine = 'Google Gemini 3.8 Flash Absolute Forensics';
 
-      if (geminiData.sentences && Array.isArray(geminiData.sentences)) {
+      if (geminiData.sentences && Array.isArray(geminiData.sentences) && geminiData.sentences.length > 0) {
         analysis.sentence_heatmap = geminiData.sentences.map((s, idx) => ({
           index: idx + 1,
           sentence: s.sentence,
@@ -963,6 +968,18 @@ export default async function handler(req, res) {
           reason: s.reason || `${s.ai_score}% probability`
         }));
       }
+      // If Gemini didn't provide sentences (or gave empty array), keep local heatmap
+      // but still recalculate colors based on updated aiProb
+      if (!geminiData.sentences || !Array.isArray(geminiData.sentences) || geminiData.sentences.length === 0) {
+        analysis.sentence_heatmap = analysis.sentence_heatmap.map(h => ({
+          ...h,
+          ai_score: Math.max(h.ai_score, aiProb - 5),
+          human_score: Math.min(h.human_score, humanProb + 5),
+          color: Math.max(h.ai_score, aiProb - 5) >= 65 ? 'red' : Math.max(h.ai_score, aiProb - 5) >= 35 ? 'amber' : 'green',
+          flag: Math.max(h.ai_score, aiProb - 5) >= 65 ? 'AI Generated' : Math.max(h.ai_score, aiProb - 5) >= 35 ? 'Likely AI' : 'Human Written'
+        }));
+      }
+
 
       if (geminiData.flagged_cliches && Array.isArray(geminiData.flagged_cliches)) {
         analysis.flagged_phrases = geminiData.flagged_cliches.map(c => ({
@@ -1006,14 +1023,23 @@ export default async function handler(req, res) {
       rewritten = await runGeminiHumanize(text, context, tone, aggressiveness, apiKey);
     }
 
-    // Always run local rewriter:
-    // 1. If Gemini failed (null) - run full local rewrite
-    // 2. If Gemini returned same text - run full local rewrite
-    // 3. If Gemini succeeded - still run local cleanup to catch any remaining AI markers
-    if (!rewritten || rewritten.trim() === text.trim()) {
+    // Smarter similarity check: if Gemini output shares >90% word overlap with input, treat as unchanged
+    function wordOverlapRatio(a, b) {
+      const wa = new Set(a.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+      const wb = new Set(b.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+      const intersection = [...wa].filter(w => wb.has(w)).length;
+      const union = Math.max(wa.size, wb.size, 1);
+      return intersection / union;
+    }
+
+    const similarity = wordOverlapRatio(text, rewritten || '');
+    const geminiEffectivelyUnchanged = !rewritten || similarity > 0.88;
+
+    if (geminiEffectivelyUnchanged) {
+      // Gemini failed or returned near-identical text — run full local rewrite
       rewritten = humanizeLocally(text, context, tone, aggressiveness);
     } else {
-      // Post-process Gemini output to eradicate any remaining clichés it missed
+      // Gemini changed the text — still post-process to catch remaining AI markers
       rewritten = humanizeLocally(rewritten, context, tone, 'light');
     }
 
