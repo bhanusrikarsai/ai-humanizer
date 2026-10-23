@@ -638,7 +638,47 @@ function humanizeLocally(text, context, tone, aggressiveness = 'balanced') {
       .replace(/\bfrom consideration\b/gi, 'entirely')
       .replace(/\bnever appeared together with the label\b/gi, 'never showed up alongside the label')
       .replace(/\bin the training data\b/gi, 'in the training set')
-      .replace(/\bmultiplies the entire probability by zero\b/gi, 'multiplies the whole probability by zero');
+      .replace(/\bmultiplies the entire probability by zero\b/gi, 'multiplies the whole probability by zero')
+      // ── Additional high-frequency AI markers ──
+      .replace(/\bfundamentally transforming\b/gi, 'completely changing')
+      .replace(/\bfundamentally transform\b/gi, 'completely change')
+      .replace(/\bfundamentally changed\b/gi, 'completely changed')
+      .replace(/\bneural networks with multiple layers\b/gi, 'multi-layer neural networks')
+      .replace(/\bneural network\b/gi, 'neural net')
+      .replace(/\bneural networks\b/gi, 'neural nets')
+      .replace(/\bensures?\b/gi, 'makes sure')
+      .replace(/\bsignificantly\b/gi, 'noticeably')
+      .replace(/\benhance[sd]?\b/gi, 'improve')
+      .replace(/\benhancing\b/gi, 'improving')
+      .replace(/\bimplementing\b/gi, 'rolling out')
+      .replace(/\bimplementation\b/gi, 'rollout')
+      .replace(/\bsolutions?\b/gi, 'approach')
+      .replace(/\boptimize[sd]?\b/gi, 'improve')
+      .replace(/\boptimizing\b/gi, 'improving')
+      .replace(/\boptimization\b/gi, 'improvement')
+      .replace(/\bmitigate[sd]?\b/gi, 'reduce')
+      .replace(/\bmitigating\b/gi, 'reducing')
+      .replace(/\baddresse[sd]?\b/gi, 'tackled')
+      .replace(/\bincorporate[sd]?\b/gi, 'include')
+      .replace(/\bincorporating\b/gi, 'including')
+      .replace(/\bsubstantial(?:ly)?\b/gi, 'significant')
+      .replace(/\bnovel\b/gi, 'new')
+      .replace(/\binnovative\b/gi, 'new')
+      .replace(/\badvanced\b/gi, 'better')
+      .replace(/\bsophisticated\b/gi, 'complex')
+      .replace(/\bintelligent\b/gi, 'smart')
+      .replace(/\bsignificant(?:ly)?\b/gi, 'major')
+      .replace(/\bcommitment to excellence\b/gi, 'dedication to quality')
+      .replace(/\bcommitment to\b/gi, 'focus on')
+      .replace(/\bexcellence\b/gi, 'quality')
+      .replace(/\bprioritize\b/gi, 'focus on')
+      .replace(/\bprioritizes\b/gi, 'focuses on')
+      .replace(/\bprioritizing\b/gi, 'focusing on')
+      .replace(/\bproactively\b/gi, 'actively')
+      .replace(/\bseek(?:s|ing)? to\b/gi, 'aim to')
+      .replace(/\ballows? for\b/gi, 'lets')
+      .replace(/\bprovide[sd]? a\b/gi, 'give a');
+
 
     // 3. Contractions & Cadence Flow
     if (t === 'stealth' || t === 'conversational' || t === 'casual' || agg !== 'light') {
@@ -932,7 +972,14 @@ export default async function handler(req, res) {
         }));
       }
 
-      // Update detector matrix to match Gemini probability
+      // ── Recalculate sentence-level counts from Gemini's heatmap ──
+      const updatedHeatmap = analysis.sentence_heatmap;
+      analysis.sentences_ai_flagged = updatedHeatmap.filter(h => h.color === 'red').length;
+      analysis.sentences_mixed_flagged = updatedHeatmap.filter(h => h.color === 'amber').length;
+      analysis.sentences_human_count = updatedHeatmap.filter(h => h.color === 'green').length;
+      analysis.sentence_count = updatedHeatmap.length;
+
+      // ── Update detector matrix scores ──
       const passedCount = humanProb >= 60 ? 7 : 0;
       Object.keys(analysis.detector_matrix).forEach(key => {
         analysis.detector_matrix[key].human_score = humanProb;
@@ -951,6 +998,7 @@ export default async function handler(req, res) {
     const text = body.text || '';
     const tone = body.tone || 'stealth';
     const context = body.context || 'General writing';
+    // Always use 'balanced' minimum — 'light' still runs full local rewriter
     const aggressiveness = body.aggressiveness || 'balanced';
 
     let rewritten = null;
@@ -958,8 +1006,15 @@ export default async function handler(req, res) {
       rewritten = await runGeminiHumanize(text, context, tone, aggressiveness, apiKey);
     }
 
-    if (!rewritten) {
+    // Always run local rewriter:
+    // 1. If Gemini failed (null) - run full local rewrite
+    // 2. If Gemini returned same text - run full local rewrite
+    // 3. If Gemini succeeded - still run local cleanup to catch any remaining AI markers
+    if (!rewritten || rewritten.trim() === text.trim()) {
       rewritten = humanizeLocally(text, context, tone, aggressiveness);
+    } else {
+      // Post-process Gemini output to eradicate any remaining clichés it missed
+      rewritten = humanizeLocally(rewritten, context, tone, 'light');
     }
 
     return res.status(200).json({
