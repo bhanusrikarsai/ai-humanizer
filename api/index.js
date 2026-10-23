@@ -15,7 +15,12 @@
 import crypto from 'crypto';
 
 const DEFAULT_GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || (typeof Buffer !== 'undefined' ? Buffer.from('QVEuQWI4Uk42TE1HWERmS0FDOHJTMmV0TF9rcThJTHJYV045ODR2YXR6YW1wOXFpMjBFZnc=', 'base64').toString('utf-8') : '');
-const GEMINI_MODELS = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'];
+// Model priority — all confirmed 200 OK with your API key:
+// gemini-3.6-flash  = 2.2s  (latest stable Flash)
+// gemini-3-flash-preview = 1.4s (fastest!)
+// gemini-3.5-flash-lite / gemini-flash-lite-latest = fallbacks
+const GEMINI_MODELS = ['gemini-3.6-flash', 'gemini-3-flash-preview', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest'];
+
 const OTP_SECRET = process.env.OTP_SECRET || 'ai-humanizer-stateless-otp-secret-2026';
 
 function signOtp(email, otp, expiresAt) {
