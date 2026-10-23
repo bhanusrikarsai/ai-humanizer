@@ -15,7 +15,10 @@ Supports:
 
 import os
 import re
+import logging
 from typing import Dict, Any, List, Optional
+
+logger = logging.getLogger("contextual_rewriter")
 
 FEW_SHOT_EXAMPLES = {
     "Recruiter Feedback": [
@@ -494,8 +497,14 @@ Return ONLY the raw humanized text without any intro, markdown headings, or quot
             (r"\bIt is crucial to note that\s+", "" if tone_lower in ("stealth", "professional") else "Direct analysis confirms that " if tone_lower == "academic" else "Importantly, "),
             (r"\bit is crucial to note that\s+", "" if tone_lower in ("stealth", "professional") else "direct analysis confirms that " if tone_lower == "academic" else "importantly, "),
             (r"\bIt is paramount to highlight that\s+", "Importantly, "),
-            (r"\bdelv(?:e|es|ed|ing)?\s+into\s+", "looking into " if tone_lower in ("stealth", "conversational") else "examining " if tone_lower == "academic" else "reviewing "),
-            (r"\bDelv(?:e|es|ed|ing)?\s+into\s+", "Looking into " if tone_lower in ("stealth", "conversational") else "Examining " if tone_lower == "academic" else "Reviewing "),
+            (r"\bdelve into\s+", "look into " if tone_lower in ("stealth", "conversational") else "examine " if tone_lower == "academic" else "review "),
+            (r"\bdelves into\s+", "looks into " if tone_lower in ("stealth", "conversational") else "examines " if tone_lower == "academic" else "reviews "),
+            (r"\bdelved into\s+", "looked into " if tone_lower in ("stealth", "conversational") else "examined " if tone_lower == "academic" else "reviewed "),
+            (r"\bdelving into\s+", "looking into " if tone_lower in ("stealth", "conversational") else "examining " if tone_lower == "academic" else "reviewing "),
+            (r"\bDelve into\s+", "Look into " if tone_lower in ("stealth", "conversational") else "Examine " if tone_lower == "academic" else "Review "),
+            (r"\bDelves into\s+", "Looks into " if tone_lower in ("stealth", "conversational") else "Examines " if tone_lower == "academic" else "Reviews "),
+            (r"\bDelved into\s+", "Looked into " if tone_lower in ("stealth", "conversational") else "Examined " if tone_lower == "academic" else "Reviewed "),
+            (r"\bDelving into\s+", "Looking into " if tone_lower in ("stealth", "conversational") else "Examining " if tone_lower == "academic" else "Reviewing "),
             (r"\bserves as a testament to\b", "clearly shows" if tone_lower in ("stealth", "conversational") else "substantiates" if tone_lower == "academic" else "confirms"),
             (r"\ba testament to\b", "a strong reflection of"),
             (r"\bIn conclusion,\s*", "Bottom line: " if tone_lower in ("stealth", "ultra_stealth") else "In sum, " if tone_lower == "academic" else "In summary, " if tone_lower == "professional" else "To wrap up, " if tone_lower == "conversational" else "Taken together, "),
@@ -678,6 +687,11 @@ Return ONLY the raw humanized text without any intro, markdown headings, or quot
         result = re.sub(r",\s*,", ",", result)
         result = re.sub(r"\.\s*\.", ".", result)
 
+        # Capitalize letters following sentence-ending punctuation (.!?)
+        result = re.sub(r'([.!?]\s+)([a-z])', lambda m: m.group(1) + m.group(2).upper(), result)
+        if result and result[0].islower():
+            result = result[0].upper() + result[1:]
+
         # ------------------------------------------------------------------
         # Phase 6: Strict Entity Presence Guarantee
         # ------------------------------------------------------------------
@@ -697,9 +711,14 @@ Return ONLY the raw humanized text without any intro, markdown headings, or quot
     def rewrite_gemini(self, text: str, context: str, tone: str, locked_entities: List[str], api_key: Optional[str] = None, aggressiveness: str = "balanced") -> str:
         """Call Google Gemini Pro via the google-genai SDK with aggressiveness temperature modulation."""
         key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or ""
+        if not key or len(key.strip()) < 10:
+            raise ValueError("No valid Gemini API key provided. Using fast local humanizer engine.")
 
-        from google import genai
-        client = genai.Client(api_key=key)
+        try:
+            from google import genai
+            client = genai.Client(api_key=key.strip())
+        except Exception as e:
+            raise ValueError(f"Could not initialize Gemini client: {e}")
 
         agg = (aggressiveness or "balanced").lower()
         temp = 0.65 if agg == "light" else 1.05 if agg == "strong" else 0.88
@@ -722,6 +741,11 @@ Return ONLY the raw humanized text without any intro, markdown headings, or quot
                     return response.text.strip()
             except Exception as e:
                 last_err = e
+                err_str = str(e).lower()
+                # If quota exhausted (429), unauthorized (401), forbidden (403), or invalid argument (400), don't waste time retrying
+                if "429" in err_str or "quota" in err_str or "resource_exhausted" in err_str or "403" in err_str or "401" in err_str or "limit" in err_str or "404" in err_str:
+                    logger.warning(f"Gemini API limit or error ({e}). Immediately falling back to local engine.")
+                    break
                 continue
 
         if last_err:

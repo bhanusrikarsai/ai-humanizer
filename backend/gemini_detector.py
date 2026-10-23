@@ -90,6 +90,10 @@ Output valid JSON matching this schema:
                     return data
             except Exception as e:
                 last_error = e
+                err_str = str(e).lower()
+                if "429" in err_str or "quota" in err_str or "resource_exhausted" in err_str or "403" in err_str or "401" in err_str or "limit" in err_str:
+                    logger.warning(f"Gemini API limit or quota reached: {e}. Exiting Gemini detection immediately to use local detector.")
+                    break
                 logger.warning(f"Model {model_name} failed: {e}. Trying next model...")
 
         if last_error:
