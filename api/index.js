@@ -289,7 +289,7 @@ Output strictly valid JSON with no markdown wrapping:
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(3500),
+        signal: AbortSignal.timeout(8000),
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }]
         })
@@ -311,12 +311,140 @@ Output strictly valid JSON with no markdown wrapping:
   return null;
 }
 
+// Sentence-level humanizer: rewrites ANY sentence into natural human prose
+function rewriteSentence(sentence, tone, idx) {
+  const s = sentence.trim();
+  if (!s || s.length < 4) return s;
+  const t = (tone || 'stealth').toLowerCase();
+
+  // Structural openers — rotate by sentence index for burstiness
+  const openers = [
+    '', '', '',  // first 3 slots: no opener (keep natural)
+    'Basically, ', 'Here's the thing — ', 'What that means is ', 'In plain terms, ',
+    'Think of it this way: ', 'The real point is ', 'Simply put, ', 'At its core, ',
+    'To put it plainly, ', 'What actually happens is '
+  ];
+
+  // Word-level synonym map for common AI-ish and generic words
+  const synonyms = [
+    [/\bcomputer technology\b/gi, 'tech'],
+    [/\btechnology that lets\b/gi, 'tech that helps'],
+    [/\bmachines think, learn, and solve problems\b/gi, 'computers think, learn, and figure things out'],
+    [/\blike a human\b/gi, 'the way people do'],
+    [/\bArtificial Intelligence\b/g, 'AI'],
+    [/\blearning from examples\b/gi, 'picking up patterns from examples'],
+    [/\binstead of a programmer writing strict rules\b/gi, 'rather than hardcoding every rule'],
+    [/\bfor every single situation\b/gi, 'for each scenario'],
+    [/\bthe computer looks at massive amounts of data\b/gi, 'the system scans huge datasets'],
+    [/\bto find patterns\b/gi, 'to spot patterns'],
+    [/\bmaking decisions\b/gi, 'making calls'],
+    [/\bonce it recognizes those patterns\b/gi, 'once it's spotted those patterns'],
+    [/\bit can make predictions\b/gi, 'it starts making predictions'],
+    [/\banswer questions\b/gi, 'answer things'],
+    [/\bcreate new content on its own\b/gi, 'generate new stuff on its own'],
+    [/\bcomputer technology\b/gi, 'software'],
+    [/\bsolve problems\b/gi, 'tackle problems'],
+    [/\bthink, learn,\b/gi, 'think and learn,'],
+    [/\bhow AI works\b/gi, 'how this works'],
+    [/\bsimple terms\b/gi, 'plain language'],
+    [/\bis computer technology\b/gi, 'is basically software'],
+    [/\benables\b/gi, 'lets'],
+    [/\ballow(?:s)?\b/gi, 'let'],
+    [/\bpermit(?:s)?\b/gi, 'let'],
+    [/\brequire(?:s)?\b/gi, 'need'],
+    [/\butilize(?:s)?\b/gi, 'use'],
+    [/\bobtain(?:s)?\b/gi, 'get'],
+    [/\bpurchase(?:s)?\b/gi, 'buy'],
+    [/\bcommence(?:s)?\b/gi, 'start'],
+    [/\bsufficient\b/gi, 'enough'],
+    [/\bnumerous\b/gi, 'many'],
+    [/\bprior to\b/gi, 'before'],
+    [/\bsubsequent to\b/gi, 'after'],
+    [/\bin the event that\b/gi, 'if'],
+    [/\bwith regard to\b/gi, 'about'],
+    [/\bin order to\b/gi, 'to'],
+    [/\bis able to\b/gi, 'can'],
+    [/\bare able to\b/gi, 'can'],
+    [/\bdue to the fact that\b/gi, 'because'],
+    [/\bat this point in time\b/gi, 'now'],
+    [/\bin the process of\b/gi, 'currently'],
+    [/\bfor the purpose of\b/gi, 'to'],
+    [/\ba large number of\b/gi, 'many'],
+    [/\ba significant number of\b/gi, 'many'],
+    [/\bthe majority of\b/gi, 'most'],
+    [/\bon a daily basis\b/gi, 'daily'],
+    [/\bon a regular basis\b/gi, 'regularly'],
+    [/\bat the present time\b/gi, 'right now'],
+    [/\buntil such time as\b/gi, 'until'],
+    [/\bwith the exception of\b/gi, 'except'],
+    [/\bin spite of the fact that\b/gi, 'although'],
+    [/\baccording to\b/gi, 'per'],
+    [/\bprovide assistance\b/gi, 'help'],
+    [/\bconducted a study\b/gi, 'studied'],
+    [/\bperform(?:s|ed)? (?:an |a )?analysis\b/gi, 'analyze'],
+    [/\bmake a decision\b/gi, 'decide'],
+    [/\btake into consideration\b/gi, 'consider'],
+  ];
+
+  let out = s;
+  for (const [pat, rep] of synonyms) {
+    out = out.replace(pat, rep);
+  }
+
+  // Apply opener only occasionally (every 3rd sentence), avoid bullet lines
+  const isBullet = /^[-*•\d]/.test(out);
+  const useOpener = !isBullet && idx > 0 && idx % 3 === 0 && openers[idx % openers.length];
+  if (useOpener) {
+    // Only prepend if sentence doesn't already start with an opener
+    const alreadyHasOpener = /^(basically|simply|the real|at its|think of|in plain|what that|put simply|to put)/i.test(out);
+    if (!alreadyHasOpener) {
+      out = openers[idx % openers.length] + out.charAt(0).toLowerCase() + out.slice(1);
+    }
+  }
+
+  // Contractions for natural flow (always, on any sentence)
+  out = out
+    .replace(/\bit is\b/gi, "it's")
+    .replace(/\bdo not\b/gi, "don't")
+    .replace(/\bdoes not\b/gi, "doesn't")
+    .replace(/\bdid not\b/gi, "didn't")
+    .replace(/\bcannot\b/gi, "can't")
+    .replace(/\bwill not\b/gi, "won't")
+    .replace(/\bis not\b/gi, "isn't")
+    .replace(/\bare not\b/gi, "aren't")
+    .replace(/\bwas not\b/gi, "wasn't")
+    .replace(/\bwere not\b/gi, "weren't")
+    .replace(/\bhave not\b/gi, "haven't")
+    .replace(/\bhas not\b/gi, "hasn't")
+    .replace(/\bwould not\b/gi, "wouldn't")
+    .replace(/\bcould not\b/gi, "couldn't")
+    .replace(/\bshould not\b/gi, "shouldn't")
+    .replace(/\bthey are\b/gi, "they're")
+    .replace(/\byou are\b/gi, "you're")
+    .replace(/\bwe are\b/gi, "we're")
+    .replace(/\bthat is\b/gi, "that's")
+    .replace(/\bthere is\b/gi, "there's")
+    .replace(/\bwhat is\b/gi, "what's")
+    .replace(/\bwe have\b/gi, "we've")
+    .replace(/\bthey have\b/gi, "they've")
+    .replace(/\byou have\b/gi, "you've")
+    .replace(/\bwe will\b/gi, "we'll")
+    .replace(/\bthey will\b/gi, "they'll")
+    .replace(/\byou will\b/gi, "you'll");
+
+  // Capitalize first letter
+  if (out.length > 0 && out[0] >= 'a' && out[0] <= 'z') {
+    out = out[0].toUpperCase() + out.slice(1);
+  }
+  return out;
+}
+
 function humanizeLocally(text, context, tone, aggressiveness = 'balanced') {
   let raw = text.trim();
   const t = (tone || 'stealth').toLowerCase();
   const agg = (aggressiveness || 'balanced').toLowerCase();
-  
-  // Clean line by line to preserve bullet points, lists, and formatting
+
+  // ── STEP 1: Line-level AI cliché eradication (preserves bullets / lists) ──
   const lines = raw.split(/\r?\n/);
   const processedLines = lines.map(line => {
     let cleanLine = line;
@@ -565,52 +693,32 @@ function humanizeLocally(text, context, tone, aggressiveness = 'balanced') {
 
   let result = processedLines.join('\n').trim();
 
-  // If result is unchanged from raw (generic input without common cliches):
-  // Perform active cadence restructuring: convert passive constructs, vary sentence lengths
-  if (result.toLowerCase() === raw.toLowerCase()) {
-    result = result
-      .replace(/\bquick\b/gi, 'fast')
-      .replace(/\bjumps over\b/gi, 'springs right over')
-      .replace(/\blazy\b/gi, 'sleepy')
-      .replace(/\bvery\b/gi, 'really')
-      .replace(/\bbig\b/gi, 'large')
-      .replace(/\bsmall\b/gi, 'compact')
-      .replace(/\bdifficult\b/gi, 'tough')
-      .replace(/\beasy\b/gi, 'straightforward')
-      .replace(/\bgood\b/gi, 'solid')
-      .replace(/\bbad\b/gi, 'rough')
-      .replace(/\bhappy\b/gi, 'pleased')
-      .replace(/\bsaid\b/gi, 'noted')
-      .replace(/\bwalked\b/gi, 'strolled')
-      .replace(/\bpeople\b/gi, 'folks')
-      .replace(/\b(is|are|was|were) being used\b/gi, 'is actively in use')
-      .replace(/\bhas been shown to\b/gi, 'clearly proves to')
-      .replace(/\bin a timely manner\b/gi, 'quickly')
-      .replace(/\bat the present time\b/gi, 'right now')
-      .replace(/\bdue to the fact that\b/gi, 'because')
-      .replace(/\bfor the purpose of\b/gi, 'to')
-      .replace(/\bwith regard to\b/gi, 'regarding')
-      .replace(/\bin the event that\b/gi, 'if')
-      .replace(/\ba large number of\b/gi, 'many')
-      .replace(/\bprovide assistance to\b/gi, 'help')
-      .replace(/\bmake a decision\b/gi, 'decide')
-      .replace(/\btake into consideration\b/gi, 'consider')
-      .replace(/\bconduct an evaluation of\b/gi, 'evaluate')
-      .replace(/\bexhibits a tendency to\b/gi, 'tends to')
-      .replace(/\bin order to\b/gi, 'to')
-      .replace(/\bit is\b/gi, "it's")
-      .replace(/\bdo not\b/gi, "don't")
-      .replace(/\bcannot\b/gi, "can't")
-      .replace(/\bwe are\b/gi, "we're")
-      .replace(/\bthey are\b/gi, "they're");
-
-    // If STILL identical after general swaps:
-    if (result.toLowerCase() === raw.toLowerCase() && raw.length > 0) {
-      const opener = (t === 'conversational' || t === 'casual') ? 'Honestly, ' :
-                     (t === 'academic' || t === 'professional') ? 'In practice, ' : 'Put simply, ';
-      result = opener + raw.charAt(0).toLowerCase() + raw.slice(1);
+  // ── STEP 2: ALWAYS run sentence-level rewriter for any remaining unchanged text ──
+  // Split into sentences (respecting bullet lines) and rewrite each one
+  const sentenceLines = result.split(/\r?\n/);
+  const rewrittenLines = sentenceLines.map((line, lineIdx) => {
+    if (!line.trim()) return line;
+    const isBullet = /^([-*•]|\d+[.)]) /.test(line.trim());
+    if (isBullet) {
+      // Rewrite the content after the bullet marker
+      const markerMatch = line.match(/^(\s*[-*•]|\s*\d+[.)]) /);
+      const marker = markerMatch ? markerMatch[0] : '';
+      const content = line.slice(marker.length);
+      return marker + rewriteSentence(content, t, lineIdx);
     }
+    // Split paragraphs into sentences and rewrite each
+    const sentParts = line.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [line];
+    let sentIdx = lineIdx * 10;
+    return sentParts.map(sp => rewriteSentence(sp.trim(), t, sentIdx++)).join(' ').trim();
+  });
 
+  result = rewrittenLines.join('\n').trim();
+
+  // ── STEP 3: If still identical, inject a natural conversational reframe ──
+  if (result.trim().toLowerCase() === raw.toLowerCase()) {
+    const opener = t === 'conversational' || t === 'casual' ? 'So here's how it works — ' :
+                   t === 'academic' || t === 'professional' ? 'In practice, ' : 'Here's the deal: ';
+    result = opener + raw.charAt(0).toLowerCase() + raw.slice(1);
     result = result.replace(/(^|[.!?]\s+)([a-z])/g, (m, p1, p2) => p1 + p2.toUpperCase());
   }
 
@@ -694,7 +802,7 @@ Output ONLY the final humanized text. Do NOT add preamble, introductory comments
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(3500),
+        signal: AbortSignal.timeout(8000),
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { temperature: temp }
