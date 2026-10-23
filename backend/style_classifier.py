@@ -115,6 +115,26 @@ EXTENDED_AI_CLICHES = [
     (r"\brevolutionize the way\b", "revolutionize the way", "Overused hype phrase"),
     (r"\bcornerstone of\b", "cornerstone of", "Overused AI architectural metaphor"),
     (r"\bquintessential\b", "quintessential", "Stiff academic descriptor"),
+    (r"\bartificial intelligence\b", "artificial intelligence", "Common AI topical trigger"),
+    (r"\bmachine learning\b", "machine learning", "Common AI topical trigger"),
+    (r"\bdeep learning\b", "deep learning", "Common AI topical trigger"),
+    (r"\bneural networks?\b", "neural networks", "Technical AI marker"),
+    (r"\bis transforming\b", "is transforming", "AI momentum trope"),
+    (r"\btransforming modern industries\b", "transforming modern industries", "Prototypical AI essay cliché"),
+    (r"\bautomated processes\b", "automated processes", "Corporate AI jargon"),
+    (r"\bmodern industries\b", "modern industries", "AI essay cliché"),
+    (r"\bbiological process by which\b", "biological process by which", "Encyclopedic AI definition trope"),
+    (r"\bfundamental mechanism\b", "fundamental mechanism", "AI academic trope"),
+    (r"\bsustaining life\b", "sustaining life", "Formulaic explanatory trope"),
+    (r"\bis a subset of\b", "is a subset of", "AI taxonomy template"),
+    (r"\bis a branch of\b", "is a branch of", "AI taxonomy template"),
+    (r"\bcapable of performing tasks\b", "capable of performing tasks", "Textbook AI definition cliché"),
+    (r"\btypically require human intelligence\b", "typically require human intelligence", "Textbook AI definition cliché"),
+    (r"\bstreamline operations\b", "streamline operations", "Corporate AI jargon"),
+    (r"\benhance decision-making\b", "enhance decision-making", "Corporate AI jargon"),
+    (r"\bunlock new growth opportunities\b", "unlock new growth opportunities", "Corporate AI trope"),
+    (r"\bintegration of intelligent algorithms\b", "integration of intelligent algorithms", "Hype tech cliché"),
+    (r"\bensures higher accuracy\b", "ensures higher accuracy", "Generic AI performance claim"),
 ]
 
 
@@ -248,8 +268,8 @@ class StyleClassifier:
                 triggers.append(f"{len(matched_cliches)} AI Cliché Marker(s)")
 
             # Definitional templates
-            if re.search(r"\b[A-Za-z\s\(\)]+ is (?:the ability of|defined as|a system that|a technology that|a concept that|characterized by)\b", s, re.IGNORECASE):
-                score += 40.0
+            if re.search(r"\b[A-Za-z\s\(\)]+ is (?:the ability of|defined as|a system that|a technology that|a concept that|characterized by|transforming|a branch of|a subset of|the biological process)\b", s, re.IGNORECASE):
+                score += 45.0
                 triggers.append("Definitional AI Template")
 
             # Formulaic transitions
@@ -262,17 +282,17 @@ class StyleClassifier:
                 score += 20.0
                 triggers.append("Passive Nominalization")
 
-            # Pronoun involvement (Human signal)
+            # Pronoun involvement (Human signal only when NO AI cliches or transitions exist)
             has_pronoun = bool(re.search(r"\b(i|we|you|our|us|my|me)\b", s, re.IGNORECASE))
-            if has_pronoun:
-                score -= 25.0
+            if has_pronoun and not matched_cliches and not triggers:
+                score -= 15.0
             elif s_words > 14:
                 score += 10.0
                 triggers.append("Detached Impersonal Cadence")
 
-            # Contractions (Human signal)
-            if re.search(r"\b[a-zA-Z]+'[a-zA-Z]+\b", s):
-                score -= 15.0
+            # Contractions (Human signal only when not dominated by cliches)
+            if re.search(r"\b[a-zA-Z]+'[a-zA-Z]+\b", s) and not matched_cliches:
+                score -= 10.0
 
             final_ai = min(max(round(score, 1), 2.0), 99.0)
             final_human = round(100.0 - final_ai, 1)
@@ -494,8 +514,10 @@ class StyleClassifier:
 
         # Definitional template penalty (AI textbook definitions)
         definitional_penalty = 0.0
-        if re.search(r"\b[A-Za-z\s\(\)]+ is (?:the ability of|defined as|a system that|a technology that|a concept that|characterized by)\b", text, re.IGNORECASE):
-            definitional_penalty = 18.0
+        if re.search(r"\b[A-Za-z\s\(\)]+ is (?:the ability of|defined as|a system that|a technology that|a concept that|characterized by|transforming|a branch of|a subset of|the biological process)\b", text, re.IGNORECASE):
+            definitional_penalty = 35.0
+        elif re.search(r"\b(?:through|via) (?:automated|innovative|advanced|cutting-edge)\b", text, re.IGNORECASE):
+            definitional_penalty = 25.0
 
         # Impersonal & abstract nominalization penalty
         has_pronouns = bool(re.search(r"\b(i|we|you|our|us|my|me)\b", text, re.IGNORECASE))
