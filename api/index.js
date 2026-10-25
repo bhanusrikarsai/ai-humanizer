@@ -325,7 +325,7 @@ function rewriteSentence(sentence, tone, idx) {
   // Structural openers — rotate by sentence index for burstiness
   const openers = [
     '', '', '',  // first 3 slots: no opener (keep natural)
-    'Basically, ', 'Here's the thing — ', 'What that means is ', 'In plain terms, ',
+    'Basically, ', 'Here\'s the thing — ', 'What that means is ', 'In plain terms, ',
     'Think of it this way: ', 'The real point is ', 'Simply put, ', 'At its core, ',
     'To put it plainly, ', 'What actually happens is '
   ];
@@ -343,7 +343,7 @@ function rewriteSentence(sentence, tone, idx) {
     [/\bthe computer looks at massive amounts of data\b/gi, 'the system scans huge datasets'],
     [/\bto find patterns\b/gi, 'to spot patterns'],
     [/\bmaking decisions\b/gi, 'making calls'],
-    [/\bonce it recognizes those patterns\b/gi, 'once it's spotted those patterns'],
+    [/\bonce it recognizes those patterns\b/gi, 'once it\'s spotted those patterns'],
     [/\bit can make predictions\b/gi, 'it starts making predictions'],
     [/\banswer questions\b/gi, 'answer things'],
     [/\bcreate new content on its own\b/gi, 'generate new stuff on its own'],
@@ -766,8 +766,8 @@ function humanizeLocally(text, context, tone, aggressiveness = 'balanced') {
 
   // ── STEP 3: If still identical, inject a natural conversational reframe ──
   if (result.trim().toLowerCase() === raw.toLowerCase()) {
-    const opener = t === 'conversational' || t === 'casual' ? 'So here's how it works — ' :
-                   t === 'academic' || t === 'professional' ? 'In practice, ' : 'Here's the deal: ';
+    const opener = t === 'conversational' || t === 'casual' ? "So here's how it works — " :
+                   t === 'academic' || t === 'professional' ? 'In practice, ' : "Here's the deal: ";
     result = opener + raw.charAt(0).toLowerCase() + raw.slice(1);
     result = result.replace(/(^|[.!?]\s+)([a-z])/g, (m, p1, p2) => p1 + p2.toUpperCase());
   }
