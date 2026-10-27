@@ -396,17 +396,6 @@ function rewriteSentence(sentence, tone, idx) {
     out = out.replace(pat, rep);
   }
 
-  // Apply opener only occasionally (every 3rd sentence), avoid bullet lines
-  const isBullet = /^[-*•\d]/.test(out);
-  const useOpener = !isBullet && idx > 0 && idx % 3 === 0 && openers[idx % openers.length];
-  if (useOpener) {
-    // Only prepend if sentence doesn't already start with an opener
-    const alreadyHasOpener = /^(basically|simply|the real|at its|think of|in plain|what that|put simply|to put)/i.test(out);
-    if (!alreadyHasOpener) {
-      out = openers[idx % openers.length] + out.charAt(0).toLowerCase() + out.slice(1);
-    }
-  }
-
   // Contractions for natural flow (always, on any sentence)
   out = out
     .replace(/\bit is\b/gi, "it's")
@@ -822,10 +811,11 @@ function verifyAndRestoreEntities(original, rewritten, entities) {
   for (const ent of entities) {
     if (original.includes(ent) && !fixed.includes(ent)) {
       // Currency substitution fix (e.g. if rewritten generated a different dollar amount)
+      // Use function replacement () => ent to prevent $1, $2 regex backreference corruption
       if (ent.startsWith('$')) {
         const rewrittenCurr = fixed.match(/\$[\d,]+(?:\.\d+)?(?:[MBKmbk])?/);
         if (rewrittenCurr) {
-          fixed = fixed.replace(rewrittenCurr[0], ent);
+          fixed = fixed.replace(rewrittenCurr[0], () => ent);
         } else {
           fixed += ` (${ent})`;
         }
@@ -834,15 +824,17 @@ function verifyAndRestoreEntities(original, rewritten, entities) {
       else if (ent.endsWith('%')) {
         const rewrittenPct = fixed.match(/\b\d+(?:\.\d+)?%/);
         if (rewrittenPct) {
-          fixed = fixed.replace(rewrittenPct[0], ent);
+          fixed = fixed.replace(rewrittenPct[0], () => ent);
         } else {
           fixed += ` (${ent})`;
         }
       }
       // Score fraction fix (e.g. 4 out of 4)
       else if (/out of/i.test(ent)) {
-        if (/challenges|problems|tasks/i.test(fixed)) {
-          fixed = fixed.replace(/(challenges|problems|tasks)/i, `${ent} $1`);
+        if (/\b\d+\s+(?:challenges|problems|tasks|coding problems)\b/i.test(fixed)) {
+          fixed = fixed.replace(/\b\d+\s+(?:challenges|problems|tasks|coding problems)\b/i, () => `${ent} challenges`);
+        } else if (/challenges|problems|tasks/i.test(fixed)) {
+          fixed = fixed.replace(/(challenges|problems|tasks)/i, () => `${ent} challenges`);
         } else {
           fixed += ` (${ent})`;
         }
@@ -861,15 +853,15 @@ function verifyAndRestoreEntities(original, rewritten, entities) {
 const FEW_SHOT_EXEMPLARS = {
   'Recruiter Feedback': `EXAMPLE:
 Robotic Input: "It is crucial to note that candidate Alice Chen demonstrated exceptional aptitude during her evaluation on October 12, 2026. Delve into her score of 94% on System Design and completed 4 out of 4 challenges in 45 minutes using Python and Kubernetes. Furthermore, her communication serves as a testament to her senior caliber. In conclusion, extend an offer of $165,000 without delay."
-Humanized Output: "Alice really stood out during her technical evaluation on October 12, 2026. She scored 94% on System Design and solved 4 out of 4 challenges in 45 minutes using Python and Kubernetes. Her communication was crisp and showed true senior ownership. The team definitely recommends extending an offer of $165,000 right away."`,
+Humanized Output: "Alice did great in her interview on October 12, 2026. Really sharp candidate. During system design, she hit 94% and handled all 4 challenges in about 45 minutes with Python and Kubernetes, walking us through every trade-off without hesitation. The team was unanimous — let's get her that $165,000 offer."`,
 
   'Candidate Outreach': `EXAMPLE:
 Robotic Input: "In today's fast-paced technological tapestry, your multifaceted background at Stripe caught our keen eye. It is paramount to highlight that our team at CloudScale is seeking a Staff Backend Engineer with 6 years experience in Go and PostgreSQL. Furthermore, we are thrilled to offer a flexible remote stipend of $15,000 alongside comprehensive health benefits. Delve into this golden opportunity and let us schedule an introductory discourse on Monday at 3:00 PM EST."
-Humanized Output: "I came across your profile and was really impressed by your backend work at Stripe. We're currently looking for a Staff Backend Engineer at CloudScale to work with Go and PostgreSQL, and your background looks like a great match. We also provide a $15,000 remote setup stipend plus full health coverage. Would you be open to a quick 15-minute chat on Monday at 3:00 PM EST?"`,
+Humanized Output: "Saw your backend work at Stripe. Really impressive stuff. We're hiring a Staff Backend Engineer at CloudScale to work with Go and PostgreSQL, and your background looks like an exact fit. We also provide a $15,000 remote setup stipend and full health coverage. Are you free for a quick chat on Monday at 3:00 PM EST?"`,
 
   'Bullet Points & Lists': `EXAMPLE:
 Robotic Input: "- It is crucial to note that velocity was optimized by 34% through automated CI/CD pipelines.\n- Furthermore, the team demonstrated unwavering commitment to mitigating 14 critical production vulnerabilities.\n- In conclusion, leveraging microservices played a pivotal role in ensuring 99.99% availability."
-Humanized Output: "- Team velocity jumped 34% once we rolled out automated CI/CD pipelines.\n- The engineers resolved 14 high-severity production vulnerabilities across our stack.\n- Moving to microservices kept our 99.99% availability target completely solid through peak traffic."`,
+Humanized Output: "- Team velocity jumped 34% once automated CI/CD pipelines went live.\n- Engineers cleared out 14 critical production vulnerabilities across the stack.\n- Microservices kept our 99.99% availability target completely solid through peak traffic."`,
 
   'Technical & Code': `EXAMPLE:
 Robotic Input: "Could you elucidate in meticulous detail the comprehensive architectural mechanisms by which you optimized database latency from 320ms down to 18ms at Acme Corp in Q2 2025? Furthermore, it is pivotal to delineate the multifaceted trade-offs between Redis caching and PostgreSQL read replicas. Please furnish empirical evidence regarding how your 99.99% SLA was preserved."
@@ -877,11 +869,11 @@ Humanized Output: "At Acme Corp in Q2 2025, how did you get database latency dow
 
   'Summary & Report': `EXAMPLE:
 Robotic Input: "In summary, Q3 2026 was a testament to our engineering division's unwavering commitment. Delving into the metrics, team velocity climbed by 34.2%, and sprint burn-down reached 98.7% fidelity. Notably, lead architect Sarah Lin mitigated 14 critical CVE vulnerabilities in the Docker pipeline. In conclusion, the multifaceted initiatives spearheaded by our 12 engineers successfully safeguarded our $2.4M enterprise contract with FinTech Global."
-Humanized Output: "In Q3 2026, the engineering team had a standout quarter. Team velocity rose 34.2%, and sprint burn-down hit 98.7% fidelity. Sarah Lin led the fix for 14 critical CVE vulnerabilities across our Docker pipeline, and our 12 engineers successfully protected our $2.4M enterprise contract with FinTech Global."`,
+Humanized Output: "Q3 2026 went remarkably well. Across the board, velocity jumped 34.2% and sprint burn-down held at 98.7% fidelity. Sarah Lin took charge of 14 critical CVE vulnerabilities in Docker, and the 12 engineers safely protected our $2.4M enterprise contract with FinTech Global."`,
 
   'General writing': `EXAMPLE:
 Robotic Input: "This phenomenon is commonly referred to as the zero-frequency problem. Because the value 'Medium' never appeared together with the label 'No' in the training data, the Naive Bayes classifier multiplies the entire probability by zero, which effectively eliminates that class from consideration."
-Humanized Output: "This is known as the zero-frequency problem. When the value 'Medium' never appears alongside the label 'No' in training data, the Naive Bayes classifier multiplies the entire probability by zero, completely eliminating that class from consideration."`
+Humanized Output: "This is known as the zero-frequency problem. In short, whenever the value 'Medium' never shows up with the label 'No' in training data, the Naive Bayes classifier multiplies the entire probability by zero. That completely wipes out the class from consideration."`
 };
 
 async function runGeminiHumanize(text, context, tone, aggressiveness = 'balanced', apiKey = '', lockedEntities = []) {
@@ -895,7 +887,7 @@ async function runGeminiHumanize(text, context, tone, aggressiveness = 'balanced
 - Do NOT heavily restructure or reorder clauses; maintain the author's original voice with minimal polish.`,
     balanced: `STRENGTH LEVEL: BALANCED (NATURAL HUMANIZATION & 100% BYPASS - DEFAULT):
 - Completely humanize robotic sentence flow while keeping all facts, numbers, dates, and technical names 100% preserved.
-- Mix short punchy sentences (4-7 words) with natural compound thoughts for high burstiness.
+- Mix short punchy sentences (2-5 words) with natural compound thoughts for high burstiness.
 - Eliminate all LLM watermarks and formulaic transitions. Guaranteed 100% pass on Turnitin, GPTZero, CopyLeaks.`,
     strong: `STRENGTH LEVEL: STRONG (AGGRESSIVE ORGANIC TRANSFORMATION):
 - Full syntactic and structural overhaul. Convert passive voice to active voice.
@@ -953,8 +945,10 @@ CRITICAL FORMATTING & FACTUAL PRESERVATION RULES:
    - If the input is in PARAGRAPHS, PRESERVE PARAGRAPHS.
 2. DETECTOR ERADICATION (BURSTINESS & PERPLEXITY):
    - Wipe out all typical AI watermarks: 'delve into', 'it is crucial to note', 'testament to', 'tapestry of', 'multifaceted', 'pivotal role', 'in conclusion', 'furthermore', 'moreover', 'game-changer', 'paramount importance', 'spearheaded by', 'underscores', 'beacon of'.
-   - Avoid monotonous sentence lengths. Mix short punchy clauses with organic compound thoughts.
+   - MANDATORY BURSTINESS: You MUST pair a very short sentence (2-4 words, e.g. 'Really sharp candidate.' or 'Solid quarter.') with a longer compound thought (20-30 words). Never write sentences of identical length.
    - Replace nominalizations (e.g. "the implementation of automated CI/CD" -> "setting up automated CI/CD").
+   - NEVER start sentences with forced transitional markers like 'Basically,', 'Here is the thing,', 'To put it simply,'. Jump straight into the thought.
+   - Avoid synthetic corporate buzzwords like 'senior-level ownership', 'stood out', 'knocked out', 'locked in'. Write like a real thoughtful human.
 3. FACTUAL INTEGRITY (0% HALLUCINATIONS):
    - STRICTLY PRESERVE all factual metrics, dates, percentages, names, dollar amounts, and technical terms exactly. Do NOT alter amounts like $165,000 or percentages like 94%.
 
